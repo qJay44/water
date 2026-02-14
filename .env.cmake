@@ -1,0 +1,8 @@
+set(GLAD_PATH   "$ENV{HOME}/Libs/glad")
+set(GLM_PATH    "$ENV{HOME}/Libs/glm")
+set(STB_PATH    "$ENV{HOME}/Libs/stb")
+set(IMGUI_PATH  "$ENV{HOME}/Libs/imgui")
+set(IMPLOT_PATH "$ENV{HOME}/Libs/implot")
+set(TOL_PATH    "$ENV{HOME}/Libs/tiny_obj_loader")
+set(UTILS_PATH  "$ENV{HOME}/Projects/utils")
+set(JSON_PATH   "$ENV{HOME}/Libs/json")
