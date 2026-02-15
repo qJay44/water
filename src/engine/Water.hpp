@@ -7,6 +7,8 @@
 #include "mesh/meshes.hpp"
 #include "nlohmann/json.hpp"
 
+#define WATER_MAX_DIRS 32
+
 struct Water : public Mesh {
   int resolution;
   float scale;
@@ -19,10 +21,14 @@ struct Water : public Mesh {
   float speedMul = 1.3f;    // Speed multipplier (slightly faster each (smaller) wave)
   int waves = 1;
 
+  vec2 dirs[WATER_MAX_DIRS];
+  float timeOffsets[WATER_MAX_DIRS];
+
   Water(int resolution, float scale)
     : Mesh(meshes::plane(resolution)), resolution(resolution), scale(scale)
   {
     setScale({scale * 0.5f, 0.f, scale * 0.5f});
+    randomizeDirs();
   }
 
   void loadPreset(std::string_view name) {
@@ -35,6 +41,9 @@ struct Water : public Mesh {
     if (f.is_open()) {
       json data = json::parse(f);
 
+      resolution  = data["resolution"];
+      scale       = data["scale"];
+
       wavelength  = data["wavelength"];
       amplitude   = data["amplitude"];
       speed       = data["speed"];
@@ -42,6 +51,8 @@ struct Water : public Mesh {
       lacunarity  = data["lacunarity"];
       speedMul    = data["speedMul"];
       waves       = data["waves"];
+
+      rebuild();
 
       f.close();
     } else {
@@ -58,6 +69,9 @@ struct Water : public Mesh {
 
     if (f.is_open()) {
       json data;
+
+      data["resolution"]  = resolution;
+      data["scale"]       = scale;
 
       data["wavelength"]  = wavelength;
       data["amplitude"]   = amplitude;
@@ -82,10 +96,19 @@ struct Water : public Mesh {
     shader.setUniform1f("u_lacunarity", lacunarity);
     shader.setUniform1f("u_speedMul", speedMul);
     shader.setUniform1i("u_count", waves);
+    shader.setUniform2fv("u_dirs", WATER_MAX_DIRS, (float*)(dirs));
+  }
+
+  void randomizeDirs() {
+    for (int i = 0; i < WATER_MAX_DIRS; i++) {
+      float angle = float(i);
+      dirs[i] = {cos(angle), sin(angle)};
+    }
   }
 
   void rebuild() {
     static_cast<Mesh&>(*this) = Mesh(meshes::plane(resolution));
+    setScale({scale * 0.5f, 0.f, scale * 0.5f});
   }
 };
 

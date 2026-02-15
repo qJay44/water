@@ -1,10 +1,13 @@
 #version 460 core
 
+#define MAX_DIRS 32
+
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inTex;
 
 out vec4 worldPos;
-out vec3 normal;
+out vec3 preWaveWorldPos;
+out vec3 normal2;
 
 uniform mat4 u_camPV;
 uniform mat4 u_model;
@@ -15,17 +18,9 @@ uniform float u_amplitude;
 uniform float u_persistence;
 uniform float u_lacunarity;
 uniform float u_speedMul;
-uniform int u_count; // NOTE: Up to D length
+uniform int u_count; // NOTE: Up to MAX_DIRS
 
-const float epsilon = 0.01f;
-
-const vec2 D[5] = vec2[5](
-    vec2(1.0, 0.0),    // Wave 0: Primary direction (Directly X)
-    vec2(0.8, 0.6),    // Wave 1: Large secondary angle (~37°)
-    vec2(0.9, -0.4),   // Wave 2: Subtle counter-angle (~ -24°)
-    vec2(0.5, 0.8),    // Wave 3: Steep cross-current detail (~58°)
-    vec2(0.7, -0.7)    // Wave 4: Diagonal choppy peaks (~ -45°)
-);
+uniform vec2 u_dirs[MAX_DIRS]; // D[i]
 
 float wave(vec2 coord) {
   float twoOverWavelength = 2.f / u_wavelength;
@@ -36,7 +31,7 @@ float wave(vec2 coord) {
   float phase = u_speed * twoOverWavelength; // Move
 
   for (int i = 0; i < u_count; i++) {
-    res += alpha * sin(dot(D[i], coord) * omega + u_time * phase);
+    res += alpha * sin(dot(u_dirs[i], coord) * omega + u_time * phase);
 
     alpha *= u_persistence;
     omega *= u_lacunarity;
@@ -46,19 +41,92 @@ float wave(vec2 coord) {
   return res;
 }
 
+float waveExp(vec2 coord) {
+  float twoOverWavelength = 2.f / u_wavelength;
+  float res = 0.f;
+
+  float alpha = u_amplitude;
+  float omega = twoOverWavelength;           // Frequency
+  float phase = u_speed * twoOverWavelength; // Move
+
+  for (int i = 0; i < u_count; i++) {
+    res += alpha * exp(sin(dot(u_dirs[i], coord) * omega + u_time * phase) - 1.f);
+
+    alpha *= u_persistence;
+    omega *= u_lacunarity;
+    phase *= u_speedMul;
+  }
+
+  return res;
+}
+
+// Returns vec3(wave, slopeX, slopeZ)
+vec3 waveSurface(vec2 coord) {
+  float twoOverWavelength = 2.f / u_wavelength;
+  float wave = 0.f;
+  vec2 dxdz = vec2(0.f);
+
+  float alpha = u_amplitude;
+  float omega = twoOverWavelength;           // Frequency
+  float phase = u_speed * twoOverWavelength; // Move
+
+  for (int i = 0; i < u_count; i++) {
+    float angle = dot(u_dirs[i], coord) * omega + u_time * phase;
+    float sinAngle = sin(angle);
+    float cosAngle = cos(angle);
+
+    wave += alpha * sinAngle;
+
+    float derivativeFactor = alpha * omega * cosAngle;
+    dxdz += u_dirs[i] * derivativeFactor;
+
+    alpha *= u_persistence;
+    omega *= u_lacunarity;
+    phase *= u_speedMul;
+  }
+
+  return vec3(wave, dxdz);
+}
+
+// Returns vec3(wave, slopeX, slopeZ)
+vec3 waveSurfaceExp(vec2 coord) {
+  float twoOverWavelength = 2.f / u_wavelength;
+  float wave = 0.f;
+  vec2 dxdz = vec2(0.f);
+
+  float alpha = u_amplitude;
+  float omega = twoOverWavelength;           // Frequency
+  float phase = u_speed * twoOverWavelength; // Move
+
+  for (int i = 0; i < u_count; i++) {
+    vec2 dir = u_dirs[i];
+    float angle = dot(dir, coord) * omega + u_time * phase;
+    float sinAngle = sin(angle);
+    float cosAngle = cos(angle);
+    float sharpWave = exp(sinAngle - 1.f);
+
+    wave += alpha * sharpWave;
+
+    float derivativeFactor = alpha * omega * cosAngle * sharpWave;
+    dxdz += dir * derivativeFactor;
+
+    alpha *= u_persistence;
+    omega *= u_lacunarity;
+    phase *= u_speedMul;
+
+    coord += dxdz;
+  }
+
+  return vec3(wave, dxdz);
+}
+
 void main() {
   worldPos = u_model * vec4(inPos, 1.f);
+  preWaveWorldPos = worldPos.xyz;
 
-  // Probably will be wrong if plane is rotated
-  float heightCenter = wave(worldPos.xz);
-  float heightRight = wave(worldPos.xz + vec2(epsilon, 0.f));
-  float heightUp = wave(worldPos.xz + vec2(0.f, epsilon));
+  vec3 waveData = waveSurfaceExp(worldPos.xz);
 
-  float dydx = (heightRight - heightCenter) / epsilon;
-  float dydz = (heightUp - heightCenter) / epsilon;
-  normal = normalize(vec3(-dydx, 1.f, -dydz));
-
-  worldPos.y += heightCenter;
+  worldPos.y += waveData.x;
 
   gl_Position = u_camPV * worldPos;
 }

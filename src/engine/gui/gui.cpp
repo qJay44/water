@@ -14,6 +14,7 @@ static bool collapsed = true;
 Camera* gui::camPtr = nullptr;
 Light* gui::lightPtr = nullptr;
 Water* gui::waterPtr = nullptr;
+Fog* gui::fogPtr = nullptr;
 
 u16 gui::fps = 1;
 
@@ -99,7 +100,9 @@ void gui::draw() {
     SliderFloat("Wave length", &waterPtr->wavelength, 0.f, 100.f);
     SliderFloat("Speed", &waterPtr->speed, 0.f, 100.f);
     SliderFloat("Amplitude", &waterPtr->amplitude, 0.f, 100.f);
-    SliderInt("Waves", &waterPtr->waves, 1, 5);
+    SliderInt("Waves", &waterPtr->waves, 1, WATER_MAX_DIRS);
+    if (Button("New directions"))
+      waterPtr->randomizeDirs();
 
     SeparatorText("Sum of waves");
     SliderFloat("Persistence", &waterPtr->persistence, 0.f, 1.f);
@@ -118,6 +121,14 @@ void gui::draw() {
     InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
     if (Button("Save") && bufSave[0])
       waterPtr->savePreset(std::format("{}.json", bufSave));
+  }
+
+  // ===== Fog =========================================================================================== //
+
+  if (!fogPtr) error("The fog is not linked to gui");
+  if (CollapsingHeader("Fog")) {
+    SliderFloat("Density", &fogPtr->density, 0.f, 2.f);
+    ColorEdit3("Color", glm::value_ptr(fogPtr->color));
   }
 
   // ===== Light ========================================================================================= //

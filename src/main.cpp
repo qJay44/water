@@ -1,5 +1,9 @@
+#include "engine/FBO.hpp"
+#include "engine/Fog.hpp"
 #include "engine/Light.hpp"
 #include "engine/Water.hpp"
+#include "engine/texture/TextureDescriptor.hpp"
+#include "pch.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -92,6 +96,7 @@ int main() {
   Shader lightShader("light.vert", "light.frag");
   Shader linesShader("lines.vert", "lines.frag");
   Shader waterShader("water.vert", "water.frag");
+  Shader postprocessShader("postprocess.vert", "postprocess.frag");
 
   // ===== Cameras ============================================== //
 
@@ -106,13 +111,37 @@ int main() {
   glfwSetKeyCallback(window, InputsHandler::keyCallback);
   glfwSetCursorPosCallback(window, InputsHandler::cursorPosCallback);
 
+  // ===== Framebuffers ========================================= //
+
+  TextureDescriptor fboTexDesc;
+  fboTexDesc.uniformName = "u_sceneColorTex";
+  fboTexDesc.unit = 0;
+  fboTexDesc.minFilter = GL_NEAREST;
+  fboTexDesc.magFilter = GL_NEAREST;
+  fboTexDesc.genMipMap = false;
+
+  Texture sceneColorTex({winSize}, fboTexDesc);
+
+  fboTexDesc.uniformName = "u_sceneDepthTex";
+  fboTexDesc.unit = 1;
+  fboTexDesc.internalFormat = GL_DEPTH_COMPONENT24;
+  fboTexDesc.format = GL_DEPTH_COMPONENT;
+  Texture sceneDepthTex({winSize}, fboTexDesc);
+
+  FBO fboScene;
+  fboScene.attach2D(GL_COLOR_ATTACHMENT0, sceneColorTex);
+  fboScene.attach2D(GL_DEPTH_ATTACHMENT, sceneDepthTex);
+
   // ============================================================ //
 
   Light light({0.f, 100.f, 0.f});
   Water water(100, 100.f);
+  water.loadPreset("waves0.json");
 
   Mesh axis = meshes::axis();
   axis.scale(1e4f);
+
+  Fog fog{vec3(1.f), 1.f};
 
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
@@ -120,6 +149,7 @@ int main() {
   gui::camPtr = &cameraSpectate;
   gui::lightPtr = &light;
   gui::waterPtr = &water;
+  gui::fogPtr = &fog;
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -150,20 +180,35 @@ int main() {
     }
 
     light.update();
+
     light.setUniforms(waterShader);
     water.setUniforms(waterShader);
     waterShader.setUniform1f("u_time", global::time);
+    fog.setUniforms(postprocessShader);
 
+    fboScene.bind();
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_CULL_FACE); // Disable for plane meshes, enable for volumetric meshes
-    glEnable(GL_DEPTH_TEST); // Disable to ignore depth (draw one object over another one without discarding the farthest)
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
 
     water.draw(&cameraSpectate, waterShader);
 
     glDisable(GL_CULL_FACE);
 
     light.draw(&cameraSpectate, lightShader);
+
+    FBO::unbind();
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+
+    sceneDepthTex.bind();
+    sceneColorTex.bind();
+    Mesh::screenDraw(&cameraSpectate, postprocessShader);
+    sceneDepthTex.unbind();
+    sceneColorTex.unbind();
 
     if (global::drawGlobalAxis)
       axis.draw(&cameraSpectate, linesShader);

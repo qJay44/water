@@ -39,6 +39,7 @@ public:
   void setUniform1ui(GLint loc, const GLuint& v);
   void setUniform2i (GLint loc, const ivec2& v);
   void setUniform1fv(GLint loc, GLsizei count, const GLfloat* v);
+  void setUniform2fv(GLint loc, GLsizei count, const GLfloat* v);
   void setUniform3fv(GLint loc, GLsizei count, const GLfloat* v);
   void setUniformMatrix4f(const GLint& loc, const mat4& m);
 
@@ -50,6 +51,7 @@ public:
   void setUniform1ui(const std::string& name, const GLuint& v);
   void setUniform2i (const std::string& name, const ivec2& v);
   void setUniform1fv(const std::string& name, GLsizei count, const float* v);
+  void setUniform2fv(const std::string& name, GLsizei count, const float* v);
   void setUniform3fv(const std::string& name, GLsizei count, const float* v);
   void setUniformMatrix4f(const std::string& name, const mat4& m);
 

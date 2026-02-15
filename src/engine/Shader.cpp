@@ -85,6 +85,7 @@ void Shader::setUniform1i (GLint loc, const GLint& v)   { glProgramUniform1i (pr
 void Shader::setUniform1ui(GLint loc, const GLuint& v)  { glProgramUniform1ui(program, loc, v); }
 void Shader::setUniform2i (GLint loc, const ivec2& v)   { glProgramUniform2i (program, loc, v.x, v.y); }
 void Shader::setUniform1fv(GLint loc, GLsizei count, const GLfloat* v) { glProgramUniform1fv(program, loc, count, v); }
+void Shader::setUniform2fv(GLint loc, GLsizei count, const GLfloat* v) { glProgramUniform2fv(program, loc, count, v); }
 void Shader::setUniform3fv(GLint loc, GLsizei count, const GLfloat* v) { glProgramUniform3fv(program, loc, count, v); }
 void Shader::setUniformMatrix4f(const GLint& loc, const mat4& m) { glProgramUniformMatrix4fv(program, loc, 1, GL_FALSE, value_ptr(m)); }
 
@@ -96,6 +97,7 @@ void Shader::setUniform1i (const std::string& name, const GLint& v)   { setUnifo
 void Shader::setUniform1ui(const std::string& name, const GLuint& v)  { setUniform1ui(getUniformLoc(name), v); }
 void Shader::setUniform2i (const std::string& name, const ivec2& v)   { setUniform2i (getUniformLoc(name), v); }
 void Shader::setUniform1fv(const std::string& name, GLsizei count, const GLfloat* v) { setUniform1fv(getUniformLoc(name), count, v); }
+void Shader::setUniform2fv(const std::string& name, GLsizei count, const GLfloat* v) { setUniform2fv(getUniformLoc(name), count, v); }
 void Shader::setUniform3fv(const std::string& name, GLsizei count, const GLfloat* v) { setUniform3fv(getUniformLoc(name), count, v); }
 void Shader::setUniformMatrix4f(const std::string& name, const mat4& m) { setUniformMatrix4f(getUniformLoc(name), m); }
 
