@@ -86,7 +86,7 @@ void gui::draw() {
     if (SliderInt("Resolution", &waterPtr->resolution, 2, 500))
       waterPtr->rebuild();
 
-    if (SliderFloat("Scale", &waterPtr->scale, 0.f, 1000.f))
+    if (SliderFloat("Scale", &waterPtr->scale, 0.f, 10000.f))
       waterPtr->setScale({waterPtr->scale * 0.5f, 0.f, waterPtr->scale * 0.5f});
 
     if (TreeNode("Info")) {
@@ -97,17 +97,16 @@ void gui::draw() {
     }
 
     SeparatorText("Wave");
-    SliderFloat("Wave length", &waterPtr->wavelength, 0.f, 100.f);
+    SliderFloat("Wavelength", &waterPtr->wavelength, 0.f, 100.f);
     SliderFloat("Speed", &waterPtr->speed, 0.f, 100.f);
     SliderFloat("Amplitude", &waterPtr->amplitude, 0.f, 100.f);
-    SliderInt("Waves", &waterPtr->waves, 1, WATER_MAX_DIRS);
-    if (Button("New directions"))
-      waterPtr->randomizeDirs();
+    SliderInt("Waves", &waterPtr->waves, 1, 32);
 
     SeparatorText("Sum of waves");
     SliderFloat("Persistence", &waterPtr->persistence, 0.f, 1.f);
     SliderFloat("Lacunarity", &waterPtr->lacunarity, 1.f, 10.f);
     SliderFloat("Speed mutiplier", &waterPtr->speedMul, 0.f, 50.f);
+    SliderFloat("Drag mutiplier", &waterPtr->dragMul, 0.f, 2.f);
 
     SeparatorText("Load/Save");
 

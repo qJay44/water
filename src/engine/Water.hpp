@@ -7,8 +7,6 @@
 #include "mesh/meshes.hpp"
 #include "nlohmann/json.hpp"
 
-#define WATER_MAX_DIRS 32
-
 struct Water : public Mesh {
   int resolution;
   float scale;
@@ -19,16 +17,13 @@ struct Water : public Mesh {
   float persistence = 0.5f; // Amplitude multipplier (should go lower with each wave)
   float lacunarity = 2.f;   // Frequency multipplier (should go higher with each wave)
   float speedMul = 1.3f;    // Speed multipplier (slightly faster each (smaller) wave)
+  float dragMul = 0.38f;    // How much waves pull on the water
   int waves = 1;
-
-  vec2 dirs[WATER_MAX_DIRS];
-  float timeOffsets[WATER_MAX_DIRS];
 
   Water(int resolution, float scale)
     : Mesh(meshes::plane(resolution)), resolution(resolution), scale(scale)
   {
     setScale({scale * 0.5f, 0.f, scale * 0.5f});
-    randomizeDirs();
   }
 
   void loadPreset(std::string_view name) {
@@ -81,7 +76,7 @@ struct Water : public Mesh {
       data["speedMul"]    = speedMul;
       data["waves"]       = waves;
 
-      f << std::setw(2) << data << std::endl;
+      f << data.dump(2);
       f.close();
     } else {
       error("[Water::savePreset] Could not open the file [{}]", path.string());
@@ -95,15 +90,8 @@ struct Water : public Mesh {
     shader.setUniform1f("u_persistence", persistence);
     shader.setUniform1f("u_lacunarity", lacunarity);
     shader.setUniform1f("u_speedMul", speedMul);
+    shader.setUniform1f("u_dragMul", dragMul);
     shader.setUniform1i("u_count", waves);
-    shader.setUniform2fv("u_dirs", WATER_MAX_DIRS, (float*)(dirs));
-  }
-
-  void randomizeDirs() {
-    for (int i = 0; i < WATER_MAX_DIRS; i++) {
-      float angle = float(i);
-      dirs[i] = {cos(angle), sin(angle)};
-    }
   }
 
   void rebuild() {

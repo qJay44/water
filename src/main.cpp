@@ -64,7 +64,7 @@ int main() {
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 
   // Window init
-  window = glfwCreateWindow(INIT_WIDTH, INIT_HEIGHT, "MyProgram", NULL, NULL);
+  window = glfwCreateWindow(1600, 900, "MyProgram", NULL, NULL);
   ivec2 winSize = global::getWinSize();
   dvec2 winCenter = dvec2(winSize) / 2.;
 
@@ -101,7 +101,7 @@ int main() {
   // ===== Cameras ============================================== //
 
   Camera cameraSpectate({85.f, 77.f, 76.f}, -2.385f, -0.582f);
-  cameraSpectate.setFarPlane(1000.f);
+  cameraSpectate.setFarPlane(5000.f);
   cameraSpectate.setSpeedDefault(50.f);
 
   // ===== Inputs Handler ======================================= //
@@ -135,7 +135,7 @@ int main() {
   // ============================================================ //
 
   Light light({0.f, 100.f, 0.f});
-  Water water(100, 100.f);
+  Water water(100, 5000.f);
   water.loadPreset("waves0.json");
 
   Mesh axis = meshes::axis();

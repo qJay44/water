@@ -1,7 +1,6 @@
 #include "meshes.hpp"
 
 #include <functional>
-#include <print>
 #include <vector>
 
 namespace meshes {

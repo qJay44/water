@@ -1,7 +1,5 @@
 #pragma once
 
-#define INIT_WIDTH 1200
-#define INIT_HEIGHT 720
 #define PI 3.141592265359f
 #define PI_2 (PI * 0.5f)
 #define PI_3 (PI / 3.f)

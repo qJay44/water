@@ -19,13 +19,13 @@ float linearizeDepth(float depth) {
 
 void main() {
   vec3 col = texture(u_sceneColorTex, texCoord).rgb;
-  // float depthNonLinear = texture(u_sceneDepthTex, texCoord).r;
-  // float depth = linearizeDepth(depthNonLinear) / u_camFar;
+  float depthNonLinear = texture(u_sceneDepthTex, texCoord).r;
+  float depth = linearizeDepth(depthNonLinear) / u_camFar;
 
-  // float fogFactor = 1.f - exp(-depth * u_fogDensity);
-  // fogFactor = clamp(fogFactor, 0.f, 1.f);
+  float fogFactor = 1.f - exp(-depth * u_fogDensity);
+  fogFactor = clamp(fogFactor, 0.f, 1.f);
 
-  // col = mix(col, u_fogColor, fogFactor);
+  col = mix(col, u_fogColor, fogFactor);
 
   FragColor = vec4(col, 1.f);
 }
