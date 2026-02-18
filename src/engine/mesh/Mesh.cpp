@@ -202,6 +202,7 @@ void Mesh::draw(const Camera* camera, Shader& shader, bool forceNoWireframe) con
   vao.bind();
 
   setCamUniforms(camera, shader);
+  shader.setUniform1f("u_time", global::time);
   shader.setUniformMatrix4f("u_model", getModel());
 
   if (global::drawWireframe & !forceNoWireframe)

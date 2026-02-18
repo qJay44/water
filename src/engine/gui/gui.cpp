@@ -12,8 +12,8 @@ using namespace ImGui;
 static bool collapsed = true;
 
 Camera* gui::camPtr = nullptr;
-Light* gui::lightPtr = nullptr;
 Water* gui::waterPtr = nullptr;
+Sun* gui::sunPtr = nullptr;
 Fog* gui::fogPtr = nullptr;
 
 u16 gui::fps = 1;
@@ -127,16 +127,18 @@ void gui::draw() {
   if (!fogPtr) error("The fog is not linked to gui");
   if (CollapsingHeader("Fog")) {
     SliderFloat("Density", &fogPtr->density, 0.f, 2.f);
+    SliderFloat("Start", &fogPtr->start, 0.f, 10000.f);
+    SliderFloat("Height falloff", &fogPtr->heightFalloff, 0.f, 100.f);
     ColorEdit3("Color", glm::value_ptr(fogPtr->color));
   }
 
   // ===== Light ========================================================================================= //
 
-  if (!lightPtr) error("The light is not linked to gui");
+  if (!sunPtr) error("The light is not linked to gui");
   if (CollapsingHeader("Light")) {
-    DragFloat3("Position", glm::value_ptr(lightPtr->position));
-    DragFloat("Radius", &lightPtr->radius, 1.f, 0.f);
-    ColorEdit3("Color", glm::value_ptr(lightPtr->color));
+    DragFloat("Focus", &sunPtr->focus, 1.f, 0.f);
+    DragFloat("Intensity", &sunPtr->intensity, 1.f, 0.f);
+    ColorEdit3("Color", glm::value_ptr(sunPtr->color));
   };
 
   // ===== Other ========================================================================================= //

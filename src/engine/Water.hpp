@@ -45,6 +45,7 @@ struct Water : public Mesh {
       persistence = data["persistence"];
       lacunarity  = data["lacunarity"];
       speedMul    = data["speedMul"];
+      dragMul     = data["dragMul"];
       waves       = data["waves"];
 
       rebuild();
@@ -74,6 +75,7 @@ struct Water : public Mesh {
       data["persistence"] = persistence;
       data["lacunarity"]  = lacunarity;
       data["speedMul"]    = speedMul;
+      data["dragMul"]     = dragMul;
       data["waves"]       = waves;
 
       f << data.dump(2);

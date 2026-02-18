@@ -1,9 +1,4 @@
-#include "engine/FBO.hpp"
-#include "engine/Fog.hpp"
-#include "engine/Light.hpp"
-#include "engine/Water.hpp"
-#include "engine/texture/TextureDescriptor.hpp"
-#include "pch.hpp"
+#include "engine/lighting/Sun.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -15,13 +10,15 @@
   #define CHDIR(p) chdir(p);
 #endif
 
-#include "global.hpp"
 #include "engine/gui/gui.hpp"
 #include "engine/Camera.hpp"
 #include "engine/Shader.hpp"
 #include "engine/InputsHandler.hpp"
 #include "engine/mesh/meshes.hpp"
-#include "engine/Light.hpp"
+#include "engine/FBO.hpp"
+#include "engine/Fog.hpp"
+#include "engine/Water.hpp"
+#include "engine/texture/TextureDescriptor.hpp"
 #include "utils/clrp.hpp"
 
 using global::window;
@@ -97,12 +94,13 @@ int main() {
   Shader linesShader("lines.vert", "lines.frag");
   Shader waterShader("water.vert", "water.frag");
   Shader postprocessShader("postprocess.vert", "postprocess.frag");
+  Shader sunShader("sun.vert", "sun.frag");
 
   // ===== Cameras ============================================== //
 
   Camera cameraSpectate({85.f, 77.f, 76.f}, -2.385f, -0.582f);
   cameraSpectate.setFarPlane(5000.f);
-  cameraSpectate.setSpeedDefault(50.f);
+  cameraSpectate.setSpeedDefault(100.f);
 
   // ===== Inputs Handler ======================================= //
 
@@ -134,22 +132,25 @@ int main() {
 
   // ============================================================ //
 
-  Light light({0.f, 100.f, 0.f});
+  Sun sun(800.f, 2.f, {1.f, 0.f, 0.f});
+
   Water water(100, 5000.f);
   water.loadPreset("waves0.json");
 
   Mesh axis = meshes::axis();
   axis.scale(1e4f);
 
-  Fog fog{vec3(1.f), 1.f};
+  Fog fog{vec3(1.f), 0.001f, 100.f, 0.02f};
 
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
 
   gui::camPtr = &cameraSpectate;
-  gui::lightPtr = &light;
   gui::waterPtr = &water;
+  gui::sunPtr = &sun;
   gui::fogPtr = &fog;
+
+  Camera* cam = &cameraSpectate;
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -173,30 +174,33 @@ int main() {
     } else
       glfwSetCursorPos(window, winCenter.x, winCenter.y);
 
-    // Update window title every 0.3 seconds
+    // Update fps every 0.3 seconds
     if (currTime - titleTimer >= 0.3) {
       gui::fps = static_cast<u16>(1.f / global::dt);
       titleTimer = currTime;
     }
 
-    light.update();
-
-    light.setUniforms(waterShader);
     water.setUniforms(waterShader);
-    waterShader.setUniform1f("u_time", global::time);
     fog.setUniforms(postprocessShader);
+    sun.setUniforms(waterShader);
+    waterShader.setUniformMatrix4f("u_camInv", cam->getProjViewInv());
+
+    // ===== Scene framebuffer ==================================== //
 
     fboScene.bind();
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+
+    sun.draw(cam, sunShader);
+
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    water.draw(&cameraSpectate, waterShader);
+    water.draw(cam, waterShader);
 
-    glDisable(GL_CULL_FACE);
-
-    light.draw(&cameraSpectate, lightShader);
+    // ===== Main framebuffer ===================================== //
 
     FBO::unbind();
     glClearColor(0.f, 0.f, 0.f, 1.f);
@@ -206,12 +210,12 @@ int main() {
 
     sceneDepthTex.bind();
     sceneColorTex.bind();
-    Mesh::screenDraw(&cameraSpectate, postprocessShader);
+    Mesh::screenDraw(cam, postprocessShader);
     sceneDepthTex.unbind();
     sceneColorTex.unbind();
 
     if (global::drawGlobalAxis)
-      axis.draw(&cameraSpectate, linesShader);
+      axis.draw(cam, linesShader);
 
     // ============================================================ //
 

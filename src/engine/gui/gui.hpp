@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../Light.hpp"
+#include "../lighting/Sun.hpp"
 #include "../Water.hpp"
 #include "../Fog.hpp"
 
 struct gui {
   static Camera* camPtr;
-  static Light* lightPtr;
   static Water* waterPtr;
+  static Sun* sunPtr;
   static Fog* fogPtr;
   static u16 fps;
 
