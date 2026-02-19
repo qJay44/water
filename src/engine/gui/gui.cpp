@@ -15,6 +15,7 @@ Camera* gui::camPtr = nullptr;
 Water* gui::waterPtr = nullptr;
 Sun* gui::sunPtr = nullptr;
 Fog* gui::fogPtr = nullptr;
+Texture* gui::skyboxTexPtr = nullptr;
 
 u16 gui::fps = 1;
 
@@ -126,9 +127,8 @@ void gui::draw() {
 
   if (!fogPtr) error("The fog is not linked to gui");
   if (CollapsingHeader("Fog")) {
-    SliderFloat("Density", &fogPtr->density, 0.f, 2.f);
+    SliderFloat("Thinness", &fogPtr->thinness, 0.f, 2.f);
     SliderFloat("Start", &fogPtr->start, 0.f, 10000.f);
-    SliderFloat("Height falloff", &fogPtr->heightFalloff, 0.f, 100.f);
     ColorEdit3("Color", glm::value_ptr(fogPtr->color));
   }
 
@@ -136,16 +136,32 @@ void gui::draw() {
 
   if (!sunPtr) error("The light is not linked to gui");
   if (CollapsingHeader("Light")) {
+    bool upd = false;
+
     DragFloat("Focus", &sunPtr->focus, 1.f, 0.f);
     DragFloat("Intensity", &sunPtr->intensity, 1.f, 0.f);
+    upd |= DragFloat("Yaw##3", &sunPtr->yaw, PI_2 * 0.01f);
+    upd |= DragFloat("Pitch##3", &sunPtr->pitch, PI_2 * 0.01f);
     ColorEdit3("Color", glm::value_ptr(sunPtr->color));
+
+    if (upd)
+      sunPtr->updateDir();
   };
 
   // ===== Other ========================================================================================= //
 
   if (CollapsingHeader("Other")) {
     Checkbox("Show global axis", &global::drawGlobalAxis);
+    if (Button("New skybox")) {
+      TextureDescriptor desc = skyboxTexPtr->getDescriptor();
+      int num = rand() % 26;
+
+      delete skyboxTexPtr;
+      skyboxTexPtr = new Texture(std::format("res/tex/Cubemaps/Cubemap_Sky_{:02}-512x512.png", num), desc);
+    }
   }
+
+  // ===================================================================================================== //
 
   End();
 

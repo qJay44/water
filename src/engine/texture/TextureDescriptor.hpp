@@ -13,5 +13,7 @@ struct TextureDescriptor {
   GLenum wrapT          = GL_REPEAT;
   GLenum wrapR          = GL_REPEAT;
   bool genMipMap        = true;
+  u32 flags = 0;
+  u32 cubemapLoad = 0;
 };
 

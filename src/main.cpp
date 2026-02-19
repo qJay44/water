@@ -95,10 +95,11 @@ int main() {
   Shader waterShader("water.vert", "water.frag");
   Shader postprocessShader("postprocess.vert", "postprocess.frag");
   Shader sunShader("sun.vert", "sun.frag");
+  Shader skyboxShader("skybox.vert", "skybox.frag");
 
   // ===== Cameras ============================================== //
 
-  Camera cameraSpectate({85.f, 77.f, 76.f}, -2.385f, -0.582f);
+  Camera cameraSpectate({85.f, 77.f, 76.f}, -PI_2);
   cameraSpectate.setFarPlane(5000.f);
   cameraSpectate.setSpeedDefault(100.f);
 
@@ -132,7 +133,8 @@ int main() {
 
   // ============================================================ //
 
-  Sun sun(800.f, 2.f, {1.f, 0.f, 0.f});
+  Sun sun(800.f, 2.f, -PI_2);
+  sun.updateDir();
 
   Water water(100, 5000.f);
   water.loadPreset("waves0.json");
@@ -140,7 +142,22 @@ int main() {
   Mesh axis = meshes::axis();
   axis.scale(1e4f);
 
-  Fog fog{vec3(1.f), 0.001f, 100.f, 0.02f};
+  Fog fog{vec3(1.f), 10.f, 100.f};
+
+  TextureDescriptor cubemapTexDesc;
+  cubemapTexDesc.uniformName = "u_skyboxTex";
+  cubemapTexDesc.unit = 2;
+  cubemapTexDesc.target = GL_TEXTURE_CUBE_MAP;
+  cubemapTexDesc.minFilter = GL_LINEAR;
+  cubemapTexDesc.magFilter = GL_LINEAR;
+  cubemapTexDesc.wrapS = GL_CLAMP_TO_EDGE;
+  cubemapTexDesc.wrapT = GL_CLAMP_TO_EDGE;
+  cubemapTexDesc.wrapR = GL_CLAMP_TO_EDGE;
+  cubemapTexDesc.genMipMap = false;
+  cubemapTexDesc.cubemapLoad = TextureCubemapLoad_FromCubemapImage;
+  Texture* skyboxTex = new Texture("res/tex/Cubemaps/Cubemap_Sky_04-512x512.png", cubemapTexDesc);
+
+  Mesh skyboxCube = Mesh::loadObj("res/obj/Cube.obj");
 
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
@@ -149,6 +166,7 @@ int main() {
   gui::waterPtr = &water;
   gui::sunPtr = &sun;
   gui::fogPtr = &fog;
+  gui::skyboxTexPtr = skyboxTex;
 
   Camera* cam = &cameraSpectate;
 
@@ -184,6 +202,7 @@ int main() {
     fog.setUniforms(postprocessShader);
     sun.setUniforms(waterShader);
     waterShader.setUniformMatrix4f("u_camInv", cam->getProjViewInv());
+    postprocessShader.setUniformMatrix4f("u_camInv", cam->getProjViewInv());
 
     // ===== Scene framebuffer ==================================== //
 
@@ -191,14 +210,20 @@ int main() {
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDisable(GL_CULL_FACE);
-    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+
+    skyboxTex->bind();
+
+    glDepthFunc(GL_LEQUAL);
+    skyboxCube.draw(cam, skyboxShader);
+    glDepthFunc(GL_LESS);
 
     sun.draw(cam, sunShader);
 
     glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-
     water.draw(cam, waterShader);
+
+    skyboxTex->unbind();
 
     // ===== Main framebuffer ===================================== //
 

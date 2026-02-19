@@ -1,6 +1,6 @@
 #version 460
 
-in vec2 v_tex;
+in vec2 v_uv;
 
 out vec4 FragColor;
 
@@ -12,9 +12,8 @@ uniform vec3 u_camPos;
 uniform vec3 u_fogColor;
 uniform float u_camNear;
 uniform float u_camFar;
-uniform float u_fogDensity;
+uniform float u_fogThinness;
 uniform float u_fogStart;
-uniform float u_fogHeightFalloff;
 
 float linearizeDepth(float depth) {
   float z = depth * 2.f - 1.f;
@@ -31,8 +30,20 @@ vec3 getWorldPosFromDepth(float depth, vec2 uv) {
 }
 
 void main() {
-  vec3 col = texture(u_sceneColorTex, v_tex).rgb;
+  vec3 col = texture(u_sceneColorTex, v_uv).rgb;
+  float depthRaw = texture(u_sceneDepthTex, v_uv).r;
 
-  FragColor = vec4(col, 1.f);
+  vec3 worldPos = getWorldPosFromDepth(depthRaw, v_uv);
+  vec3 viewDir = normalize(worldPos - u_camPos);
+  float horizonMask = 1.f - abs(viewDir.y);
+  horizonMask = pow(horizonMask, u_fogThinness);
+
+  float dist = distance(u_camPos, worldPos);
+  float distFactor = clamp(dist / u_fogStart, 0.f, 1.f);
+
+  float fogT = horizonMask * distFactor;
+  vec3 finalColor = mix(col, u_fogColor, fogT);
+
+  FragColor = vec4(finalColor, 1.f);
 }
 

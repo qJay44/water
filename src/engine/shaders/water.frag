@@ -5,12 +5,11 @@ out vec4 FragColor;
 in vec4 v_worldPos;
 in vec3 v_viewVec;
 
+layout (binding = 2) uniform samplerCube u_skyboxTex;
+
 uniform vec3 u_camPos;
 uniform vec3 u_sunColor;
 uniform vec3 u_sunDir;
-uniform vec3 u_groundColor;
-uniform vec3 u_skyHorizonColor;
-uniform vec3 u_skyZenithColor;
 uniform float u_camFar;
 uniform float u_sunFocus;
 uniform float u_sunIntensity;
@@ -24,15 +23,11 @@ uniform float u_speedMul;
 uniform float u_dragMul;
 uniform int u_count;
 
-vec3 getEnvironmentLight(vec3 reflDir) {
-  float skyGradientT = pow(smoothstep(0.f, 0.4f, reflDir.y), 0.35f);
-  vec3 skyGradient = mix(u_skyHorizonColor, u_skyZenithColor, skyGradientT);
+vec3 getReflection(vec3 reflDir) {
   float sun = pow(max(0, dot(reflDir, -u_sunDir)), u_sunFocus) * u_sunIntensity;
+  vec3 skybox = texture(u_skyboxTex, reflDir).rgb;
 
-  float groundToSkyT = smoothstep(-0.01f, 0.f, reflDir.y);
-  float sunMask = float(groundToSkyT >= 1.f);
-
-  return mix(u_groundColor, skyGradient, groundToSkyT) + sun * sunMask;
+  return skybox + sun;
 }
 
 // Returns vec3(wave, slopeX, slopeZ)
@@ -89,7 +84,7 @@ void main() {
   vec3 diffuseCol = waterBase * (lDotN + 0.2f);
 
   // 4. Reflection
-  vec3 reflCol = getEnvironmentLight(reflDir);
+  vec3 reflCol = getReflection(reflDir);
 
   // 5. COMBINE using Fresnel
   float fresnel = pow(1.f - vDotN, 4.f);
@@ -97,7 +92,7 @@ void main() {
 
   // 6. Specular (The Sun Glint)
   float specAmount = pow(max(dot(normal, halfwayDir), 0.f), 128.f);
-  vec3 specularCol = u_sunColor * specAmount * u_sunIntensity * (1.f - fresnel * 0.5f);
+  vec3 specularCol = u_sunColor * specAmount * u_sunIntensity;
 
   // Add the sun on top (Additive)
   finalCol += specularCol;

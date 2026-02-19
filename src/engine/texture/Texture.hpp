@@ -1,8 +1,20 @@
 #pragma once
 
+#include <future>
+
 #include "TextureDescriptor.hpp"
 #include "image2D.hpp"
-#include <future>
+
+enum TextureFlags : u32 {
+  TextureFlags_None      = 0,
+  TextureFlags_AsyncLoad = 1,
+};
+
+enum TextureCubemapLoad : u32 {
+  TextureCubemapLoad_FromFolder        = 0,
+  TextureCubemapLoad_FromCubemapImage  = 1,
+  TextureCubemapLoad_FromPanoramaImage = 2,
+};
 
 class Texture {
 public:
@@ -26,6 +38,7 @@ public:
   void unbind() const;
   void clear();
 
+  const TextureDescriptor& getDescriptor() const;
   const GLuint& getId() const;
   const GLenum& getTarget() const;
   const GLuint& getUnit() const;
@@ -49,10 +62,11 @@ protected:
   bool loaded = false;
 
 protected:
-  static AsyncData loadCubemap(fspath folder, GLenum internalFormat);
+  static AsyncData loadCubemapFromFolderAsync(fspath folder, GLenum internalFormat);
 
   void create2D(const image2D& img);
   void create2DArray(const fspath& folder);
-  void createCubemap(const AsyncData& data);
+  void createCubemapFromFolderAsync(const AsyncData& data);
+  void createCubemapFromCubemapImage(const image2D& img);
 };
 

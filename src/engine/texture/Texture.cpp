@@ -15,9 +15,9 @@ Texture Texture::debug0Tex;
 
 const Texture& Texture::getDebug0Tex() {
   if (debug0Tex.desc.uniformName.empty())
-    debug0Tex = Texture(image2D("res/tex/debug/uvChecker.jpg"), {
+    debug0Tex = Texture("res/tex/debug/uvChecker.jpg", {
       .uniformName = "u_debug0Tex",
-      .unit = 0, // NOTE: Will be changed by other implemnetations
+      .unit = 0, // NOTE: Can be changed
       .minFilter = GL_NEAREST,
       .magFilter = GL_NEAREST,
       .genMipMap = false
@@ -60,17 +60,39 @@ Texture::Texture(const image2D& img, const TextureDescriptor& d) : desc(d) {
 Texture::Texture(const ivec2& size, const TextureDescriptor& desc) : Texture(image2D{size.x, size.y}, desc) {}
 
 Texture::Texture(const fspath& path, const TextureDescriptor& d) : desc(d) {
+  loaded = true;
+
   switch (desc.target) {
     case GL_TEXTURE_2D:
       create2D(image2D(path));
-      loaded = true;
       break;
     case GL_TEXTURE_2D_ARRAY:
       create2DArray(path);
-      loaded = true;
       break;
     case GL_TEXTURE_CUBE_MAP:
-      texFuture = std::async(std::launch::async, loadCubemap, path, desc.internalFormat);
+      if (desc.flags & TextureFlags_AsyncLoad) {
+        loaded = false;
+        std::function<void(fspath, GLenum)> func;
+        switch (desc.cubemapLoad) {
+          case TextureCubemapLoad_FromFolder:
+            texFuture = std::async(std::launch::async, loadCubemapFromFolderAsync, path, desc.internalFormat);
+            break;
+          case TextureCubemapLoad_FromPanoramaImage:
+          case TextureCubemapLoad_FromCubemapImage:
+            error("[Texture::Texture] Not implemented");
+            break;
+        }
+      } else {
+        switch (desc.cubemapLoad) {
+          case TextureCubemapLoad_FromFolder:
+          case TextureCubemapLoad_FromPanoramaImage:
+            error("[Texture::Texture] Not implemented");
+            break;
+          case TextureCubemapLoad_FromCubemapImage:
+            createCubemapFromCubemapImage(image2D(path));
+            break;
+        }
+      }
       break;
     default:
       error("[Texture::Texture] Unhandled texture creation type: [{}]", desc.target);
@@ -88,7 +110,7 @@ void Texture::update() {
     if (status == std::future_status::ready) {
       switch (desc.target) {
         case GL_TEXTURE_CUBE_MAP:
-          createCubemap(texFuture.get());
+          createCubemapFromFolderAsync(texFuture.get());
           break;
         default:
           error("[Texture::update] Should never happen [{}]", desc.target);
@@ -122,6 +144,7 @@ void Texture::clear() {
   id = 0;
 }
 
+const TextureDescriptor& Texture::getDescriptor() const { return desc; }
 const GLuint& Texture::getId() const { return id; }
 const GLenum& Texture::getTarget() const { return desc.target; }
 const GLuint& Texture::getUnit() const { return desc.unit; }
@@ -188,7 +211,7 @@ void Texture::create2DArray(const fspath& folder) {
   unbind();
 }
 
-Texture::AsyncData Texture::loadCubemap(fspath folder, GLenum internalFormat) {
+Texture::AsyncData Texture::loadCubemapFromFolderAsync(fspath folder, GLenum internalFormat) {
   namespace fs = std::filesystem;
 
   // NOTE: Order matters
@@ -222,7 +245,7 @@ Texture::AsyncData Texture::loadCubemap(fspath folder, GLenum internalFormat) {
   return data;
 }
 
-void Texture::createCubemap(const AsyncData& data) {
+void Texture::createCubemapFromFolderAsync(const AsyncData& data) {
   glGenTextures(1, &id);
   bind();
   glTexParameteri(desc.target, GL_TEXTURE_MIN_FILTER, desc.minFilter);
@@ -233,11 +256,42 @@ void Texture::createCubemap(const AsyncData& data) {
 
   for (int i = 0; i < 6; i++) {
     const image2D& img = data.images[i];
-    assert(img.pixels);
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, desc.internalFormat, img.width, img.height, 0, desc.format, desc.type, img.pixels);
   }
 
   if (desc.genMipMap)
     glGenerateMipmap(desc.target);
+}
+
+void Texture::createCubemapFromCubemapImage(const image2D& img) {
+  glGenTextures(1, &id);
+  bind();
+  glTexParameteri(desc.target, GL_TEXTURE_MIN_FILTER, desc.minFilter);
+  glTexParameteri(desc.target, GL_TEXTURE_MAG_FILTER, desc.magFilter);
+  glTexParameteri(desc.target, GL_TEXTURE_WRAP_S, desc.wrapS);
+  glTexParameteri(desc.target, GL_TEXTURE_WRAP_T, desc.wrapT);
+  glTexParameteri(desc.target, GL_TEXTURE_WRAP_R, desc.wrapR);
+
+  //     +Y
+  //  -X +Z +X -Z
+  //     -Y
+  constexpr int skipCols[6] = {2, 0, 1, 1, 1, 3};
+  constexpr int skipRows[6] = {1, 1, 0, 2, 1, 1};
+
+  int faceSize = img.width / 4;
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, img.width);
+
+  for (int i = 0; i < 6; i++) {
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, faceSize * skipCols[i]);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, faceSize * skipRows[i]);
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, desc.internalFormat, faceSize, faceSize, 0, desc.format, desc.type, img.pixels);
+  }
+
+  if (desc.genMipMap)
+    glGenerateMipmap(desc.target);
+
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+  glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+  glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
 }
 
