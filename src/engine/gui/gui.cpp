@@ -1,11 +1,13 @@
 #include "gui.hpp"
 
-#include "glm/gtc/type_ptr.hpp"
+#include <format>
+
 #include "imgui.h"
 // #include "implot.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
-#include <format>
+
+#include "glm/gtc/type_ptr.hpp"
 
 using namespace ImGui;
 
@@ -49,9 +51,6 @@ void gui::draw() {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  static RunOnce a([]() {
-    SetNextWindowPos({0, 0});
-  });
   SetNextWindowCollapsed(collapsed);
 
   Begin("Settings");
@@ -106,7 +105,7 @@ void gui::draw() {
     SeparatorText("Sum of waves");
     SliderFloat("Persistence", &waterPtr->persistence, 0.f, 1.f);
     SliderFloat("Lacunarity", &waterPtr->lacunarity, 1.f, 10.f);
-    SliderFloat("Speed mutiplier", &waterPtr->speedMul, 0.f, 50.f);
+    SliderFloat("Speed mutiplier", &waterPtr->speedMul, 0.f, 2.f);
     SliderFloat("Drag mutiplier", &waterPtr->dragMul, 0.f, 2.f);
 
     SeparatorText("Load/Save");
@@ -154,7 +153,7 @@ void gui::draw() {
     Checkbox("Show global axis", &global::drawGlobalAxis);
     if (Button("New skybox")) {
       TextureDescriptor desc = skyboxTexPtr->getDescriptor();
-      int num = rand() % 26;
+      int num = rand() % 25 + 1;
 
       delete skyboxTexPtr;
       skyboxTexPtr = new Texture(std::format("res/tex/Cubemaps/Cubemap_Sky_{:02}-512x512.png", num), desc);
