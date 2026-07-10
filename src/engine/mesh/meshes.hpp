@@ -1,13 +1,15 @@
 #pragma once
 
-#include "Mesh.hpp"
+#include "MeshArrays.hpp"
+#include "MeshElements.hpp"
 
 namespace meshes {
 
-Mesh line(vec3 p1, vec3 p2, vec3 color);
-Mesh axis();
-Mesh plane(vec3 color = {1.f, 1.f, 1.f}, GLenum mode = GL_TRIANGLES);
-Mesh plane(size_t resolution, GLenum mode = GL_TRIANGLES, vec3 up = {0.f, 1.f, 0.f});
+MeshArrays line(vec3 p1, vec3 p2);
+MeshElements rectangle();
+MeshElements plane(size_t resolution, GLenum mode = GL_TRIANGLES);
+MeshArrays circle(int resolution = 60);
+MeshArrays axis();
 
 } // namespace meshes
 

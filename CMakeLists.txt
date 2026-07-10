@@ -38,6 +38,11 @@ target_include_directories(ImGui_GLFW_OpenGL PUBLIC
 # ===== My utils ================================================== #
 
 file(GLOB_RECURSE UTILS_SOURCES ${UTILS_PATH}/src/*.cpp)
+
+# Remove TIFF from sources
+list(REMOVE_ITEM UTILS_SOURCES ${UTILS_PATH}/src/loadTif.cpp)
+list(REMOVE_ITEM UTILS_SOURCES ${UTILS_PATH}/src/saveTif.cpp)
+
 add_library(Utils STATIC ${UTILS_SOURCES})
 
 target_include_directories(Utils PUBLIC ${UTILS_PATH}/include)
@@ -56,6 +61,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${GLM_PATH}/include
   ${TOL_PATH}/include
   ${JSON_PATH}/include
+  ${PROJECT_SOURCE_DIR}/include
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw TIFF::TIFF GLAD ImGui_GLFW_OpenGL Utils)

@@ -1,4 +1,6 @@
-#include "engine/lighting/Sun.hpp"
+#include "engine/mesh/MeshElements.hpp"
+#include "global.hpp"
+#include "water/ConfigManager.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -15,10 +17,8 @@
 #include "engine/Shader.hpp"
 #include "engine/InputsHandler.hpp"
 #include "engine/mesh/meshes.hpp"
-#include "engine/FBO.hpp"
-#include "engine/Fog.hpp"
-#include "engine/Water.hpp"
-#include "engine/texture/TextureDescriptor.hpp"
+#include "water/SOSA.hpp"
+#include "other/Sun.hpp"
 #include "utils/clrp.hpp"
 
 using global::window;
@@ -32,21 +32,29 @@ void GLAPIENTRY MessageCallback(
   const GLchar* message,
   const void* userParam
 ) {
+  static const clrp::clrp_t clrpError{clrp::ATTRIBUTE::BOLD, clrp::FG::RED};
+  static const clrp::clrp_t clrpWarning{clrp::ATTRIBUTE::BOLD, clrp::FG::YELLOW};
+
+  clrp::clrp_t clrpFinal = clrpError;
+  bool stop = true;
   switch (source) {
     case GL_DEBUG_SOURCE_SHADER_COMPILER:
       return; // Handled by the Shader class itself
-    case GL_DEBUG_SOURCE_API:
-      return; // "SIMD32 shader inefficient", skipping since occurs only on my laptop
   }
 
-  clrp::clrp_t clrpError;
-  clrpError.attr = clrp::ATTRIBUTE::BOLD;
-  clrpError.fg = clrp::FG::RED;
+  // Suppress annoyoing SIMD32 callback
+  if (type == GL_DEBUG_TYPE_PERFORMANCE) {
+    clrpFinal = clrpWarning;
+    stop = false;
+  }
+
   fprintf(
     stderr, "GL CALLBACK: %s source = 0x%x, id = 0x%x type = 0x%x, severity = 0x%x, message = %s\n",
     (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), source, id, type, severity, clrp::format(message, clrpError).c_str()
   );
-  exit(1);
+
+  if (stop)
+    exit(EXIT_FAILURE);
 }
 
 int main() {
@@ -88,20 +96,17 @@ int main() {
 
   // ===== Shaders ============================================== //
 
-  Shader::setDirectoryLocation("src/engine/shaders");
+  Shader::setDirectoryLocation("res/shaders");
 
-  Shader lightShader("light.vert", "light.frag");
-  Shader linesShader("lines.vert", "lines.frag");
-  Shader waterShader("water.vert", "water.frag");
-  Shader postprocessShader("postprocess.vert", "postprocess.frag");
-  Shader sunShader("sun.vert", "sun.frag");
-  Shader skyboxShader("skybox.vert", "skybox.frag");
+  Shader shaderAxis("axis.vert", "axis.frag");
+  Shader shaderWaterSOSA("water/sosa.vert", "water/sosa.frag");
+  Shader shaderSkybox("skybox.vert", "skybox.frag");
 
   // ===== Cameras ============================================== //
 
-  Camera cameraSpectate({85.f, 77.f, 76.f}, -PI_2);
-  cameraSpectate.setFarPlane(5000.f);
-  cameraSpectate.setSpeedDefault(100.f);
+  Camera camera({85.f, 77.f, 76.f}, -PI_2);
+  camera.setFarPlane(10000.f);
+  camera.setSpeedDefault(100.f);
 
   // ===== Inputs Handler ======================================= //
 
@@ -110,65 +115,32 @@ int main() {
   glfwSetKeyCallback(window, InputsHandler::keyCallback);
   glfwSetCursorPosCallback(window, InputsHandler::cursorPosCallback);
 
-  // ===== Framebuffers ========================================= //
-
-  TextureDescriptor fboTexDesc;
-  fboTexDesc.uniformName = "u_sceneColorTex";
-  fboTexDesc.unit = 0;
-  fboTexDesc.minFilter = GL_NEAREST;
-  fboTexDesc.magFilter = GL_NEAREST;
-  fboTexDesc.genMipMap = false;
-
-  Texture sceneColorTex({winSize}, fboTexDesc);
-
-  fboTexDesc.uniformName = "u_sceneDepthTex";
-  fboTexDesc.unit = 1;
-  fboTexDesc.internalFormat = GL_DEPTH_COMPONENT24;
-  fboTexDesc.format = GL_DEPTH_COMPONENT;
-  Texture sceneDepthTex({winSize}, fboTexDesc);
-
-  FBO fboScene;
-  fboScene.attach2D(GL_COLOR_ATTACHMENT0, sceneColorTex);
-  fboScene.attach2D(GL_DEPTH_ATTACHMENT, sceneDepthTex);
-
-  // ============================================================ //
-
-  Sun sun(800.f, 2.f, 0.f, PI_6 * 0.5f);
+  Sun sun{};
+  sun.pitch = PI_6 * 0.5f;
   sun.updateDir();
 
-  Water water(100, 5000.f);
-  water.loadPreset("waves0.json");
+  water::SOSA waterSOSA = water::SOSA{};
+  auto meshWater = meshes::plane(512);
+  meshWater.setMatScaleXZ(1000.f);
+  waterSOSA.worldSize = 1000.f;
+  water::loadPreset(waterSOSA, "sosa0.json");
 
-  Mesh axis = meshes::axis();
+  auto meshSkybox = MeshElements::loadFromOBJ("res/obj/Cube.obj");
+
+  auto axis = meshes::axis();
   axis.scale(1e4f);
 
-  Fog fog{vec3(1.f), 10.f, 100.f};
-
-  TextureDescriptor cubemapTexDesc;
-  cubemapTexDesc.uniformName = "u_skyboxTex";
-  cubemapTexDesc.unit = 2;
-  cubemapTexDesc.target = GL_TEXTURE_CUBE_MAP;
-  cubemapTexDesc.minFilter = GL_LINEAR;
-  cubemapTexDesc.magFilter = GL_LINEAR;
-  cubemapTexDesc.wrapS = GL_CLAMP_TO_EDGE;
-  cubemapTexDesc.wrapT = GL_CLAMP_TO_EDGE;
-  cubemapTexDesc.wrapR = GL_CLAMP_TO_EDGE;
-  cubemapTexDesc.genMipMap = false;
-  cubemapTexDesc.cubemapLoad = TextureCubemapLoad_FromCubemapImage;
-  Texture* skyboxTex = new Texture("res/tex/Cubemaps/Cubemap_Sky_04-512x512.png", cubemapTexDesc);
-
-  Mesh skyboxCube = Mesh::loadObj("res/obj/Cube.obj");
+  auto texSkybox = TextureCubemap::loadFromImage("res/tex/Cubemaps/Cubemap_Sky_04-512x512.png", {.target = GL_TEXTURE_CUBE_MAP});
 
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
+  glEnable(GL_DEPTH_TEST);
+  glDisable(GL_CULL_FACE);
 
-  gui::camPtr = &cameraSpectate;
-  gui::waterPtr = &water;
+  gui::camPtr = &camera;
+  gui::waterPtrSOSA = &waterSOSA;
   gui::sunPtr = &sun;
-  gui::fogPtr = &fog;
-  gui::skyboxTexPtr = skyboxTex;
-
-  Camera* cam = &cameraSpectate;
+  gui::skyboxTexPtr = &texSkybox;
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -185,12 +157,15 @@ int main() {
     else prevTime = currTime;
 
     global::time += global::dt;
+    winCenter = global::getWinCenter();
 
     if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-      InputsHandler::process(cameraSpectate);
-      cameraSpectate.update();
-    } else
-      glfwSetCursorPos(window, winCenter.x, winCenter.y);
+      InputsHandler::process(camera);
+      camera.update();
+    }
+
+    if (!global::guiFocused)
+      glfwSetCursorPos(global::window, winCenter.x, winCenter.y);
 
     // Update fps every 0.3 seconds
     if (currTime - titleTimer >= 0.3) {
@@ -198,49 +173,33 @@ int main() {
       titleTimer = currTime;
     }
 
-    water.setUniforms(waterShader);
-    fog.setUniforms(postprocessShader);
-    sun.setUniforms(waterShader);
-    waterShader.setUniformMatrix4f("u_camInv", cam->getProjViewInv());
-    postprocessShader.setUniformMatrix4f("u_camInv", cam->getProjViewInv());
+    // ===== Updates ============================================== //
 
-    // ===== Scene framebuffer ==================================== //
-
-    fboScene.bind();
-    glClearColor(0.f, 0.f, 0.f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-
-    skyboxTex->bind();
-
-    glDepthFunc(GL_LEQUAL);
-    skyboxCube.draw(cam, skyboxShader);
-    glDepthFunc(GL_LESS);
-
-    sun.draw(cam, sunShader);
-
-    glEnable(GL_CULL_FACE);
-    water.draw(cam, waterShader);
-
-    skyboxTex->unbind();
+    sun.setUniforms(shaderWaterSOSA);
+    waterSOSA.update();
 
     // ===== Main framebuffer ===================================== //
 
-    FBO::unbind();
     glClearColor(0.f, 0.f, 0.f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE + !global::wireframeMode);
+    glDepthFunc(GL_LEQUAL);
 
-    sceneDepthTex.bind();
-    sceneColorTex.bind();
-    Mesh::screenDraw(cam, postprocessShader);
-    sceneDepthTex.unbind();
-    sceneColorTex.unbind();
+    texSkybox.bind(0);
+    meshSkybox.draw(&camera, shaderSkybox);
 
-    if (global::drawGlobalAxis)
-      axis.draw(cam, linesShader);
+    glDepthFunc(GL_LESS);
+
+    switch (global::waterAlgorithm) {
+      case global::WaterAlgorithm::SOSA:
+        waterSOSA.texNormheight.bind(0);
+        texSkybox.bind(1);
+        meshWater.draw(&camera, shaderWaterSOSA);
+        break;
+    }
+
+    if (global::drawWorldAxis)
+      axis.draw(&camera, shaderAxis);
 
     // ============================================================ //
 

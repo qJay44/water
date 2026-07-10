@@ -2,8 +2,7 @@
 
 class Moveable {
 public:
-  Moveable() = default;
-  Moveable(vec3 pos, float yaw = PI_2, float pitch = 0.f);
+  Moveable(vec3 pos = vec3(0.0), float yaw = PI_2, float pitch = 0.0);
 
   void accelerate(bool b);
 
@@ -13,9 +12,9 @@ public:
   const float& getSpeed()           const;
   const float& getYaw()             const;
   const float& getPitch()           const;
-  const vec3&  getOrientation()     const;
-  const vec3&  getPosition()        const;
-  const vec3&  getUp()              const;
+  const vec3& getOrientation()     const;
+  const vec3& getPosition()        const;
+  const vec3& getUp()              const;
 
   vec3 getBack()    const;
   vec3 getLeft()    const;
@@ -28,10 +27,13 @@ public:
   void setSensitivity(float n);
   void setYaw(float n);
   void setPitch(float n);
-  void setOrientation(const vec3& o);
-  void setPosition(const vec3& pos);
-  void setUp(const vec3& up);
+  void setOrientation(vec3 o);
+  void setPosition(vec3 pos);
+  void setUp(vec3 up);
   void setView(const Moveable* rhs);
+
+  void addYaw(float n);
+  void addPitch(float n);
 
   virtual void moveForward();
   virtual void moveBack();

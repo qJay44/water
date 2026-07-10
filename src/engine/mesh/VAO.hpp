@@ -7,7 +7,7 @@ struct VAO {
   }
 
   static const VAO& getEmpty() {
-    static VAO emptyVAO;
+    static VAO emptyVAO{};
 
     if (!emptyVAO.id)
       emptyVAO.gen();
@@ -16,6 +16,24 @@ struct VAO {
   }
 
   VAO() = default;
+
+  VAO(const VAO&) = delete;
+  VAO& operator=(const VAO&) = delete;
+
+  VAO(VAO&& other) {
+    std::swap(id, other.id);
+  }
+
+  VAO& operator=(VAO&& other) {
+    if (this != &other)
+      std::swap(id, other.id);
+
+    return *this;
+  }
+
+  ~VAO() {
+    clear();
+  }
 
   void gen() {
     glGenVertexArrays(size, &id);
@@ -28,11 +46,6 @@ struct VAO {
   void clear() {
     if (id) glDeleteVertexArrays(size, &id);
     id = 0;
-  }
-
-  void linkAttrib(GLuint layout, GLuint numComponents, GLenum type, GLsizei stride, void* offset) const {
-    glEnableVertexAttribArray(layout);
-    glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset);
   }
 
 private:

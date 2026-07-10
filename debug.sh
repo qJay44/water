@@ -1,9 +1,8 @@
 #!/bin/bash
 
 cmake -S . -B Build/Debug -D CMAKE_BUILD_TYPE=Debug
-cmake --build Build/Debug --config Debug
+cmake --build Build/Debug --config Debug -j
 cd Build/Debug/Run
-hyprctl dispatch fullscreenstate 0
 
 ./MyProject
 cd ../../..

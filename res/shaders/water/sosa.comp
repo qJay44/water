@@ -1,16 +1,9 @@
 #version 460 core
 
-layout(location = 0) in vec3 inPos;
-layout(location = 1) in vec2 inTex;
+layout(local_size_x = 16, local_size_y = 16) in;
 
-out vec4 v_worldPos;
-out vec3 v_viewVec;
+layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
 
-uniform mat4 u_camPV;
-uniform mat4 u_camInv;
-uniform mat4 u_model;
-uniform vec3 u_camPos;
-uniform float u_time;
 uniform float u_wavelength;
 uniform float u_speed;
 uniform float u_amplitude;
@@ -18,13 +11,21 @@ uniform float u_persistence;
 uniform float u_lacunarity;
 uniform float u_speedMul;
 uniform float u_dragMul;
+uniform float u_worldSize;
+uniform float u_time;
 uniform int u_count;
 
-// Returns vec3(wave, slopeX, slopeZ)
-vec3 getWaveSurface(vec2 coord) {
+void main() {
+  ivec2 texCoord = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 size = imageSize(imgOutput);
+  if (texCoord.x >= size.x || texCoord.y >= size.y)
+    return;
+
   float twoOverWavelength = 2.f / u_wavelength;
   float totalWave = 0.f;
   vec2 totalSlope = vec2(0.f);
+  vec2 uv = vec2(texCoord) / vec2(size - 1);
+  vec2 worldPos = uv * u_worldSize;
 
   float alpha = u_amplitude;
   float omega = twoOverWavelength;           // Frequency
@@ -34,7 +35,7 @@ vec3 getWaveSurface(vec2 coord) {
     float angleStep = float(i) * 2.39996f;
     vec2 dir = vec2(sin(angleStep), cos(angleStep));
 
-    float angle = dot(dir, coord) * omega + u_time * phase;
+    float angle = dot(dir, worldPos) * omega + u_time * phase;
     float sharpWave = exp(sin(angle) - 1.f);
     float wave = alpha * sharpWave;
 
@@ -43,23 +44,17 @@ vec3 getWaveSurface(vec2 coord) {
     float derivativeFactor = wave * omega * cos(angle);
     vec2 slope = dir * derivativeFactor;
 
+    worldPos += slope * u_dragMul;
+    totalSlope += slope;
+
     alpha *= u_persistence;
     omega *= u_lacunarity;
     phase *= u_speedMul;
-
-    coord += slope * u_dragMul;
-    totalSlope += slope;
   }
 
-  return vec3(totalWave, totalSlope);
-}
+  vec3 normal = normalize(vec3(-totalSlope.x, -totalSlope.y, 1.f));
 
-void main() {
-  v_worldPos = u_model * vec4(inPos, 1.f);
-  // v_worldPos.xz += u_camPos.xz;
-  v_worldPos.y += getWaveSurface(v_worldPos.xz).x;
-  v_viewVec = u_camPos - v_worldPos.xyz;
-
-  gl_Position = u_camPV * v_worldPos;
+  // Store: RGB = Normal, A = Height
+  imageStore(imgOutput, texCoord, vec4(normal, totalWave));
 }
 

@@ -1,35 +1,47 @@
 #pragma once
 
+#include "glm/ext/matrix_clip_space.hpp"
+
 namespace global {
 
 static const union { vec3 right   {1.f, 0.f, 0.f}, red;   };
 static const union { vec3 up      {0.f, 1.f, 0.f}, green; };
 static const union { vec3 forward {0.f, 0.f, 1.f}, blue;  };
 
+enum class WaterAlgorithm {
+  SOSA,
+};
+
 extern GLFWwindow* window;
+extern WaterAlgorithm waterAlgorithm;
 
 extern float dt;
 extern float time;
 
+extern bool wireframeMode;
 extern bool guiFocused;
-extern bool drawWireframe;
-extern bool drawNormals;
-extern bool drawGlobalAxis;
+extern bool drawGrid;
+extern bool drawWorldAxis;
 
-inline ivec2 getWinSize() {
+static inline ivec2 getWinSize() {
   ivec2 res;
   glfwGetWindowSize(global::window, &res.x, &res.y);
   return res;
 }
 
-inline dvec2 getWinCenter() {
+static inline dvec2 getWinCenter() {
   return dvec2(getWinSize()) * 0.5;
 }
 
-inline dvec2 getMousePos() {
+static inline dvec2 getMousePos() {
   dvec2 res;
   glfwGetCursorPos(global::window, &res.x, &res.y);
   return res;
+}
+
+static inline mat4 getScreenProjection() {
+  vec2 winSize = getWinSize();
+  return glm::ortho(0.f, winSize.x, 0.f, winSize.y);
 }
 
 } // namespace global

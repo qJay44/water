@@ -1,11 +1,16 @@
 #pragma once
 
-#include <string>
-#include <unordered_map>
-
 class Shader {
 public:
   Shader() = default;
+
+  Shader(const Shader&) = delete;
+  Shader(Shader&&) = default;
+
+  Shader& operator=(const Shader&) = delete;
+  Shader& operator=(Shader&&) = default;
+
+  ~Shader() = default;
 
   [[nodiscard]] Shader(
     const fspath& vsPath,
@@ -30,6 +35,7 @@ public:
   // NOTE: Call this before any GPU run (glDispatchCompute, glDrawElements, etc.)
   void use() const;
   void printUniforms() const;
+  bool initialized() const;
 
   void setUniform1f (GLint loc, const GLfloat& n);
   void setUniform2f (GLint loc, const vec2& v);
@@ -39,8 +45,9 @@ public:
   void setUniform1ui(GLint loc, const GLuint& v);
   void setUniform2i (GLint loc, const ivec2& v);
   void setUniform1fv(GLint loc, GLsizei count, const GLfloat* v);
-  void setUniform2fv(GLint loc, GLsizei count, const GLfloat* v);
   void setUniform3fv(GLint loc, GLsizei count, const GLfloat* v);
+  void setUniform4i (GLint loc, const ivec4& v);
+  void setUniformMatrix3f(const GLint& loc, const mat3& m);
   void setUniformMatrix4f(const GLint& loc, const mat4& m);
 
   void setUniform1f (const std::string& name, const GLfloat& n);
@@ -51,8 +58,9 @@ public:
   void setUniform1ui(const std::string& name, const GLuint& v);
   void setUniform2i (const std::string& name, const ivec2& v);
   void setUniform1fv(const std::string& name, GLsizei count, const float* v);
-  void setUniform2fv(const std::string& name, GLsizei count, const float* v);
   void setUniform3fv(const std::string& name, GLsizei count, const float* v);
+  void setUniform4i (const std::string& name, const ivec4& v);
+  void setUniformMatrix3f(const std::string& name, const mat3& m);
   void setUniformMatrix4f(const std::string& name, const mat4& m);
 
 private:
@@ -61,8 +69,8 @@ private:
   std::unordered_map<std::string, GLint> locs;
 
 private:
-  static GLuint load(fspath path, int type);
-  static GLuint compile(const fspath& path, int type);
+  static std::string load(std::unordered_set<std::string>& includedShaders, fspath path);
+  static GLuint compile(fspath path, GLenum type);
   static void link(GLuint program);
 };
 

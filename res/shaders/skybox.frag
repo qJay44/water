@@ -4,7 +4,7 @@ in vec3 v_uv;
 
 out vec4 FragColor;
 
-layout (binding = 2) uniform samplerCube u_skyboxTex;
+layout (binding = 0) uniform samplerCube u_skyboxTex;
 
 void main() {
   vec3 col = texture(u_skyboxTex, v_uv).rgb;

@@ -2,22 +2,23 @@
 
 #include <format>
 
+#include "global.hpp"
 #include "imgui.h"
-// #include "implot.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 
 #include "glm/gtc/type_ptr.hpp"
+
+#include "../../water/ConfigManager.hpp"
 
 using namespace ImGui;
 
 static bool collapsed = true;
 
 Camera* gui::camPtr = nullptr;
-Water* gui::waterPtr = nullptr;
+water::SOSA* gui::waterPtrSOSA = nullptr;
 Sun* gui::sunPtr = nullptr;
-Fog* gui::fogPtr = nullptr;
-Texture* gui::skyboxTexPtr = nullptr;
+TextureCubemap* gui::skyboxTexPtr = nullptr;
 
 u16 gui::fps = 1;
 
@@ -36,7 +37,6 @@ void gui::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 void gui::init() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  // ImPlot::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
@@ -61,74 +61,52 @@ void gui::draw() {
 
   if (!camPtr) error("The spectate camera is not linked to gui");
   if (CollapsingHeader("Spectate camera")) {
-    SliderFloat("Near##2", &camPtr->nearPlane, 0.01f, 1.f);
-    SliderFloat("Far##2", &camPtr->farPlane,  10.f, 1000.f);
-    SliderFloat("Speed##2", &camPtr->speedDefault, 1.f, 50.f);
-    SliderFloat("FOV##2", &camPtr->fov, 45.f, 179.f);
-    DragFloat("Yaw##2", &camPtr->yaw);
-    DragFloat("Pitch##2", &camPtr->pitch);
+    SliderFloat("Near##1", &camPtr->nearPlane, 0.01f, 1.f);
+    SliderFloat("Far##1", &camPtr->farPlane,  10.f, 1000.f);
+    SliderFloat("Speed##1", &camPtr->speedDefault, 1.f, 50.f);
+    SliderFloat("FOV##1", &camPtr->fov, 45.f, 179.f);
+    SliderAngle("Yaw##1", &camPtr->yaw, -180.f, 180.f);
+    SliderAngle("Pitch##1", &camPtr->pitch, -89.f, 89.f);
     DragFloat3("Position", glm::value_ptr(camPtr->position));
-
-    if (TreeNode("Flags")) {
-      CheckboxFlags("Right", &camPtr->flags, CameraFlags_DrawRight);
-      CheckboxFlags("Up", &camPtr->flags, CameraFlags_DrawUp);
-      CheckboxFlags("Forward", &camPtr->flags, CameraFlags_DrawForward);
-
-      TreePop();
-    }
   }
 
   // ===== Water ========================================================================================= //
 
-  if (!waterPtr) error("The water is not linked to gui");
+  if (!waterPtrSOSA) error("The water is not linked to gui");
   if (CollapsingHeader("Water")) {
-    SeparatorText("Plane mesh");
-    if (SliderInt("Resolution", &waterPtr->resolution, 2, 500))
-      waterPtr->rebuild();
+    using enum global::WaterAlgorithm;
 
-    if (SliderFloat("Scale", &waterPtr->scale, 0.f, 10000.f))
-      waterPtr->setScale({waterPtr->scale * 0.5f, 0.f, waterPtr->scale * 0.5f});
+    BeginDisabled(global::waterAlgorithm != SOSA);
+    if (TreeNode("Sum of sines approximation")) {
+      SeparatorText("Config");
+      SliderFloat("Wavelength", &waterPtrSOSA->wavelength, 0.f, 100.f);
+      SliderFloat("Speed", &waterPtrSOSA->speed, 0.f, 100.f);
+      SliderFloat("Amplitude", &waterPtrSOSA->amplitude, 0.f, 100.f);
+      SliderFloat("Persistence", &waterPtrSOSA->persistence, 0.f, 1.f);
+      SliderFloat("Lacunarity", &waterPtrSOSA->lacunarity, 1.f, 10.f);
+      SliderFloat("Speed mutiplier", &waterPtrSOSA->speedMul, 0.f, 2.f);
+      SliderFloat("Drag mutiplier", &waterPtrSOSA->dragMul, 0.f, 2.f);
+      SliderInt("Waves", &waterPtrSOSA->waves, 1, 32);
 
-    if (TreeNode("Info")) {
-      float sizeBytes = sizeof(VertexPT) * waterPtr->verticesCount;
-      Text("Vertices: %zu (%.2f MB)", waterPtr->verticesCount, sizeBytes * 0.001f);
-      Text("Indices: %zu", waterPtr->indicesCount);
+      SeparatorText("Load/Save");
+
+      static char bufLoad[256]{"sosa0"};
+      static char bufSave[256]{"sosa0"};
+
+      InputText(".json##0", bufLoad, sizeof(bufLoad)); SameLine();
+      if (Button("Load") && bufLoad[0])
+        water::loadPreset(*waterPtrSOSA, std::format("{}.json", bufLoad));
+
+      InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
+      if (Button("Save") && bufSave[0])
+        water::savePreset(*waterPtrSOSA, std::format("{}.json", bufSave));
+
+      SeparatorText("Texture");
+      Image(waterPtrSOSA->texNormheight.getId(), vec2(global::getWinCenter()) * 0.5f);
+
       TreePop();
     }
-
-    SeparatorText("Wave");
-    SliderFloat("Wavelength", &waterPtr->wavelength, 0.f, 100.f);
-    SliderFloat("Speed", &waterPtr->speed, 0.f, 100.f);
-    SliderFloat("Amplitude", &waterPtr->amplitude, 0.f, 100.f);
-    SliderInt("Waves", &waterPtr->waves, 1, 32);
-
-    SeparatorText("Sum of waves");
-    SliderFloat("Persistence", &waterPtr->persistence, 0.f, 1.f);
-    SliderFloat("Lacunarity", &waterPtr->lacunarity, 1.f, 10.f);
-    SliderFloat("Speed mutiplier", &waterPtr->speedMul, 0.f, 2.f);
-    SliderFloat("Drag mutiplier", &waterPtr->dragMul, 0.f, 2.f);
-
-    SeparatorText("Load/Save");
-
-    static char bufLoad[256]{"waves0"};
-    static char bufSave[256]{"waves0"};
-
-    InputText(".json##0", bufLoad, sizeof(bufLoad)); SameLine();
-    if (Button("Load") && bufLoad[0])
-      waterPtr->loadPreset(std::format("{}.json", bufLoad));
-
-    InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
-    if (Button("Save") && bufSave[0])
-      waterPtr->savePreset(std::format("{}.json", bufSave));
-  }
-
-  // ===== Fog =========================================================================================== //
-
-  if (!fogPtr) error("The fog is not linked to gui");
-  if (CollapsingHeader("Fog")) {
-    SliderFloat("Thinness", &fogPtr->thinness, 0.f, 2.f);
-    SliderFloat("Start", &fogPtr->start, 0.f, 10000.f);
-    ColorEdit3("Color", glm::value_ptr(fogPtr->color));
+    EndDisabled();
   }
 
   // ===== Light ========================================================================================= //
@@ -139,8 +117,8 @@ void gui::draw() {
 
     DragFloat("Focus", &sunPtr->focus, 1.f, 0.f);
     DragFloat("Intensity", &sunPtr->intensity, 1.f, 0.f);
-    upd |= DragFloat("Yaw##3", &sunPtr->yaw, PI_2 * 0.01f);
-    upd |= DragFloat("Pitch##3", &sunPtr->pitch, PI_2 * 0.01f);
+    upd |= SliderAngle("Yaw##2", &sunPtr->yaw, -180.f, 180.f);
+    upd |= SliderAngle("Pitch##2", &sunPtr->pitch, -90.f, 90.f);
     ColorEdit3("Color", glm::value_ptr(sunPtr->color));
 
     if (upd)
@@ -150,13 +128,10 @@ void gui::draw() {
   // ===== Other ========================================================================================= //
 
   if (CollapsingHeader("Other")) {
-    Checkbox("Show global axis", &global::drawGlobalAxis);
+    Checkbox("Show world axis", &global::drawWorldAxis);
     if (Button("New skybox")) {
-      TextureDescriptor desc = skyboxTexPtr->getDescriptor();
       int num = rand() % 25 + 1;
-
-      delete skyboxTexPtr;
-      skyboxTexPtr = new Texture(std::format("res/tex/Cubemaps/Cubemap_Sky_{:02}-512x512.png", num), desc);
+      *skyboxTexPtr = TextureCubemap::loadFromImage(std::format("res/tex/Cubemaps/Cubemap_Sky_{:02}-512x512.png", num), {.target = GL_TEXTURE_CUBE_MAP});
     }
   }
 
@@ -171,7 +146,6 @@ void gui::draw() {
 void gui::shutdown() {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
-  // ImPlot::DestroyContext();
   ImGui::DestroyContext();
 }
 

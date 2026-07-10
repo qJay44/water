@@ -1,16 +1,15 @@
 #pragma once
 
-#include "../lighting/Sun.hpp"
-#include "../Water.hpp"
-#include "../Fog.hpp"
-#include "../texture/Texture.hpp"
+#include "../../water/SOSA.hpp"
+#include "../../other/Sun.hpp"
+#include "../texture/TextureCubemap.hpp"
+#include "../Camera.hpp"
 
 struct gui {
   static Camera* camPtr;
-  static Water* waterPtr;
+  static water::SOSA* waterPtrSOSA;
   static Sun* sunPtr;
-  static Fog* fogPtr;
-  static Texture* skyboxTexPtr;
+  static TextureCubemap* skyboxTexPtr;
   static u16 fps;
 
   static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);

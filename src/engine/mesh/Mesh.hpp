@@ -1,89 +1,42 @@
 #pragma once
 
-#include <functional>
-#include <span>
-#include <vector>
-
-#include "Vertex.hpp"
+#include "MeshData.hpp"
 #include "Transformable.hpp"
 #include "VAO.hpp"
 #include "BufferObject.hpp"
 #include "../Camera.hpp"
 #include "../Shader.hpp"
+#include "vertex.hpp"
 
 class Mesh : public Transformable {
 public:
   Mesh(const Mesh&) = delete;
+  Mesh(Mesh&&) = default;
+
   Mesh& operator=(const Mesh&) = delete;
+  Mesh& operator=(Mesh&&) = default;
+  ~Mesh() = default;
 
-  Mesh(Mesh&& other);
-  Mesh& operator=(Mesh&& other);
+  // NOTE: Only for attributes having all same primitve (e.g. all float (no float, float, int))
+  static void linkAttributes(const vertex::Layout& layout);
+  static void drawScreen(const Camera* camera, Shader& shader);
 
-  Mesh(const std::vector<VertexPCTN>& vertices, const std::vector<GLuint>& indices, GLenum mode, GLenum usage = GL_STATIC_DRAW);
-  Mesh(const std::vector<VertexPT>&   vertices, const std::vector<GLuint>& indices, GLenum mode, GLenum usage = GL_STATIC_DRAW);
-  Mesh(const std::vector<VertexPC>&   vertices, const std::vector<GLuint>& indices, GLenum mode, GLenum usage = GL_STATIC_DRAW);
+  GLsizei getElementCount() const;
 
-  Mesh(const std::vector<VertexPCTN>& vertices, GLenum mode, GLenum usage);
-  Mesh(const std::vector<VertexPT>&   vertices, GLenum mode, GLenum usage);
-  Mesh(const std::vector<VertexPC>&   vertices, GLenum mode, GLenum usage);
+  void updateBufferVBO(const MeshData& data);
 
-  ~Mesh();
+  virtual void draw(const Camera* camera, Shader& shader) const = 0;
+  virtual void draw(const Camera* camera, Shader& shader, const mat4& model) const = 0;
 
-  static Mesh loadObj(const fspath& file, bool printInfo = false);
-  static void screenDraw(const Camera* camera, Shader& shader);
-
-  template<typename V>
-  void updateData(const std::vector<V>& vertices, GLenum usage) {
-    vbo.allocate(vertices, usage);
-    count = vertices.size();
-  }
-
-  void draw(const Camera* camera, Shader& shader, bool forceNoWireframe = false) const;
-  void clear();
-
-private:
-  friend struct gui;
-
-  size_t verticesCount = 0;
-  size_t indicesCount = 0;
-
-  GLsizei count = 0;
-  GLenum mode = 0;
+protected:
+  GLenum mode;
+  GLsizei elementCount;
   VAO vao;
   BufferObject vbo{GL_ARRAY_BUFFER};
-  BufferObject ebo{GL_ELEMENT_ARRAY_BUFFER};
 
-  std::function<void(GLenum mode, GLsizei count)> drawFunc;
+protected:
+  Mesh() = default;
 
-private:
-  static void setCamUniforms(const Camera* c, Shader& s);
-
-  static void drawElements(GLenum mode, GLsizei count);
-  static void drawArrays(GLenum mode, GLsizei count);
-
-  template<typename V>
-  Mesh(const std::span<const V> v, const std::span<const GLuint> i, GLenum mode, GLenum usage)
-    : verticesCount(v.size()),
-      indicesCount(i.size()),
-      count(indicesCount ?: verticesCount),
-      mode(mode),
-      drawFunc(indicesCount ? drawElements : drawArrays)
-  {
-    bool useEBO = indicesCount;
-
-    vao.gen();
-    vbo.allocate(v, usage);
-    if (useEBO) ebo.allocate(i, usage);
-
-    vao.bind();
-    vbo.bind();
-    if (useEBO) ebo.bind();
-
-    V::link(vao);
-
-    vao.unbind();
-    vbo.unbind();
-    if (useEBO) ebo.unbind();
-  }
+  static void setGlobalUniforms(Shader& s);
 };
 

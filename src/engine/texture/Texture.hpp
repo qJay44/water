@@ -1,72 +1,31 @@
 #pragma once
 
-#include <future>
-
-#include "TextureDescriptor.hpp"
-#include "image2D.hpp"
-
-enum TextureFlags : u32 {
-  TextureFlags_None      = 0,
-  TextureFlags_AsyncLoad = 1,
-};
-
-enum TextureCubemapLoad : u32 {
-  TextureCubemapLoad_FromFolder        = 0,
-  TextureCubemapLoad_FromCubemapImage  = 1,
-  TextureCubemapLoad_FromPanoramaImage = 2,
-};
-
 class Texture {
 public:
-  static const Texture& getDebug0Tex();
-
-  Texture() = default;
-
   Texture(Texture&& other);
-
   Texture& operator=(Texture&& other);
 
-  Texture(const image2D& img, const TextureDescriptor& desc);
-  Texture(const ivec2& size, const TextureDescriptor& desc);
-  Texture(const fspath& path, const TextureDescriptor& desc);
-  ~Texture();
+  Texture(const Texture&) = delete;
+  Texture& operator=(const Texture&) = delete;
 
-  void update();
-  void upload(ivec2 size, void* pixels);
-  void bind(GLuint customUnit) const;
-  void bind() const;
+  virtual ~Texture() = 0;
+
+  void bind(GLuint unit = 0) const;
   void unbind() const;
   void clear();
 
-  const TextureDescriptor& getDescriptor() const;
   const GLuint& getId() const;
   const GLenum& getTarget() const;
-  const GLuint& getUnit() const;
-  const std::string& getUniformName() const;
-  // const uvec3& getSize() const;
 
-  void setUnit(GLuint unit);
-  void setUniformName(const std::string& name);
+  bool isGenerated() const;
+
+  ivec2 getSize(GLint mipLevel) const;
 
 protected:
-  static Texture debug0Tex;
-
-  TextureDescriptor desc{};
   GLuint id = 0;
-
-  struct AsyncData {
-    image2D images[6];
-  };
-
-  std::future<AsyncData> texFuture;
-  bool loaded = false;
+  GLenum target = 0;
 
 protected:
-  static AsyncData loadCubemapFromFolderAsync(fspath folder, GLenum internalFormat);
-
-  void create2D(const image2D& img);
-  void create2DArray(const fspath& folder);
-  void createCubemapFromFolderAsync(const AsyncData& data);
-  void createCubemapFromCubemapImage(const image2D& img);
+  Texture() = default;
 };
 
