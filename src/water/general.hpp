@@ -1,9 +1,17 @@
 #pragma once
 
+#include "../engine/mesh/meshes.hpp"
+
 namespace water {
 
-static constexpr int texResolution = 1024;
-static constexpr int numWorkGroups = texResolution / 16;
+extern int texResolution;
+extern int meshResolution;
+extern MeshElements mesh;
+
+extern int numWorkGroups;
+
+void init();
+void update();
 
 } // namespace water
 

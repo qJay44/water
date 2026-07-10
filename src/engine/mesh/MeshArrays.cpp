@@ -5,6 +5,7 @@ MeshArrays::MeshArrays(const MeshData& data)  {
   elementCount = data.verticesSize / data.layout.stride;
 
   vao.gen();
+  vbo.gen();
 
   vao.bind();
   vbo.allocate(data.vertices, data.verticesSize, data.usage);

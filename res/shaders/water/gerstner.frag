@@ -47,6 +47,7 @@ void main() {
 
   // Add the sun on top (Additive)
   finalCol += specularCol;
+  // finalCol = pow(finalCol, vec3(1.f / 2.2f));
 
   FragColor = vec4(finalCol, 1.f);
 }

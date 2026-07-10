@@ -15,7 +15,6 @@ uniform float u_sunIntensity;
 layout(binding = 0) uniform sampler2D u_texNormheight;
 layout(binding = 1) uniform samplerCube u_texSkybox;
 
-// FIXME: Something wrong here
 void main() {
   // 1. Directions
   vec3 normal = normalize(texture(u_texNormheight, v_uv).rgb);
@@ -48,7 +47,7 @@ void main() {
 
   // Add the sun on top (Additive)
   finalCol += specularCol;
-  //finalCol = pow(finalCol, vec3(1.f / 2.2f));
+  // finalCol = pow(finalCol, vec3(1.f / 2.2f));
 
   FragColor = vec4(finalCol, 1.f);
 }

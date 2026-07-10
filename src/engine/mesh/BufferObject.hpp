@@ -11,7 +11,7 @@ struct BufferObject {
 public:
   BufferObject() = default;
 
-  BufferObject(GLenum target, bool generate = true) : target(target) {
+  BufferObject(GLenum target, bool generate = false) : target(target) {
     if (generate)
       gen();
   }

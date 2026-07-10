@@ -1,5 +1,7 @@
 #version 460 core
 
+#include "../common.glsl"
+
 layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
@@ -32,7 +34,7 @@ void main() {
   float phase = u_speed * twoOverWavelength; // Move
 
   for (int i = 0; i < u_count; i++) {
-    float angleStep = float(i) * 2.39996f;
+    float angleStep = float(i) * GOLDEN_ANGLE;
     vec2 dir = vec2(sin(angleStep), cos(angleStep));
 
     float angle = dot(dir, worldPos) * omega + u_time * phase;
@@ -52,7 +54,7 @@ void main() {
     phase *= u_speedMul;
   }
 
-  vec3 normal = normalize(vec3(-totalSlope.x, -totalSlope.y, 1.f));
+  vec3 normal = normalize(vec3(-totalSlope.x, 1.f, -totalSlope.y));
 
   // Store: RGB = Normal, A = Height
   imageStore(imgOutput, texCoord, vec4(normal, totalWave));

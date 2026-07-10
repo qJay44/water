@@ -2,6 +2,7 @@
 #include "global.hpp"
 #include "water/ConfigManager.hpp"
 #include "water/Gerstner.hpp"
+#include "water/general.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -125,6 +126,7 @@ int main() {
 
   // ===== Water ================================================ //
 
+  water::init();
   water::SOSA waterSOSA{};
   water::loadPreset(waterSOSA, "sosa0.json");
 
@@ -133,7 +135,6 @@ int main() {
 
   // ===== Other ================================================ //
 
-  auto meshWater = meshes::plane(512);
   auto meshSkybox = MeshElements::loadFromOBJ("res/obj/Cube.obj");
   auto axis = meshes::axis();
 
@@ -218,7 +219,7 @@ int main() {
         waterSOSA.texNormheight.bind(0);
         texSkybox.bind(1);
 
-        meshWater.draw(&camera, shaderWaterSOSA);
+        water::mesh.draw(&camera, shaderWaterSOSA);
         break;
       case Gerstner:
         shaderWaterGerstner.setUniform1f("u_worldSize", waterGerstner.worldSize);
@@ -227,7 +228,7 @@ int main() {
         waterGerstner.texNormal.bind(1);
         texSkybox.bind(2);
 
-        meshWater.draw(&camera, shaderWaterGerstner);
+        water::mesh.draw(&camera, shaderWaterGerstner);
         break;
     }
 

@@ -48,6 +48,11 @@ struct Gerstner {
     glDispatchCompute(numWorkGroups, numWorkGroups, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
   }
+
+  void rebuild() {
+    texDisplacement = Texture2D(ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA});
+    texNormal = Texture2D(ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA});
+  }
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Gerstner,

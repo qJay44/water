@@ -77,6 +77,16 @@ void gui::draw() {
   if (CollapsingHeader("Water")) {
     using enum global::WaterAlgorithm;
 
+    bool u = false;
+    u |= SliderInt("Texture resolution", &water::texResolution, 1, 8192);
+    u |= SliderInt("Mesh resolution", &water::meshResolution, 1, 2048);
+
+    if (u) {
+      water::update();
+      waterPtrSOSA->rebuild();
+      waterPtrGerstner->rebuild();
+    }
+
     if (RadioButton("Sum of sines approximation", global::waterAlgorithm == SOSA)) global::waterAlgorithm = SOSA;
     if (RadioButton("Gerstner##1", global::waterAlgorithm == Gerstner)) global::waterAlgorithm = Gerstner;
 
@@ -86,7 +96,7 @@ void gui::draw() {
         assert(waterPtrSOSA);
 
         SeparatorText("Config");
-        SliderFloat("World size", &waterPtrSOSA->worldSize, 0.f, 100.f);
+        SliderFloat("World size", &waterPtrSOSA->worldSize, 0.f, 1000.f);
         SliderFloat("Wavelength", &waterPtrSOSA->wavelength, 0.f, 100.f);
         SliderFloat("Speed", &waterPtrSOSA->speed, 0.f, 100.f);
         SliderFloat("Amplitude", &waterPtrSOSA->amplitude, 0.f, 100.f);
@@ -117,7 +127,7 @@ void gui::draw() {
       {
         assert(waterPtrGerstner);
 
-        SliderFloat("World size", &waterPtrGerstner->worldSize,  0.f, 100.f);
+        SliderFloat("World size", &waterPtrGerstner->worldSize,  0.f, 1000.f);
         SliderFloat("Wavelength", &waterPtrGerstner->wavelength, 0.f, 100.f);
         SliderFloat("Amplitude",  &waterPtrGerstner->amplitude,  0.f, 100.f);
         SliderFloat("Frequency",  &waterPtrGerstner->frequency,  0.f, 100.f);
