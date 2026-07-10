@@ -1,6 +1,7 @@
 #include "engine/mesh/MeshElements.hpp"
 #include "global.hpp"
 #include "water/ConfigManager.hpp"
+#include "water/Gerstner.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -100,6 +101,7 @@ int main() {
 
   Shader shaderAxis("axis.vert", "axis.frag");
   Shader shaderWaterSOSA("water/sosa.vert", "water/sosa.frag");
+  Shader shaderWaterGerstner("water/gerstner.vert", "water/gerstner.frag");
   Shader shaderSkybox("skybox.vert", "skybox.frag");
 
   // ===== Cameras ============================================== //
@@ -115,19 +117,26 @@ int main() {
   glfwSetKeyCallback(window, InputsHandler::keyCallback);
   glfwSetCursorPosCallback(window, InputsHandler::cursorPosCallback);
 
+  // ===== Sun (light) ========================================== //
+
   Sun sun{};
   sun.pitch = PI_6 * 0.5f;
   sun.updateDir();
 
-  water::SOSA waterSOSA = water::SOSA{};
-  auto meshWater = meshes::plane(512);
-  meshWater.setMatScaleXZ(1000.f);
-  waterSOSA.worldSize = 1000.f;
+  // ===== Water ================================================ //
+
+  water::SOSA waterSOSA{};
   water::loadPreset(waterSOSA, "sosa0.json");
 
-  auto meshSkybox = MeshElements::loadFromOBJ("res/obj/Cube.obj");
+  water::Gerstner waterGerstner{};
+  water::loadPreset(waterGerstner, "gerstner0.json");
 
+  // ===== Other ================================================ //
+
+  auto meshWater = meshes::plane(512);
+  auto meshSkybox = MeshElements::loadFromOBJ("res/obj/Cube.obj");
   auto axis = meshes::axis();
+
   axis.scale(1e4f);
 
   auto texSkybox = TextureCubemap::loadFromImage("res/tex/Cubemaps/Cubemap_Sky_04-512x512.png", {.target = GL_TEXTURE_CUBE_MAP});
@@ -139,6 +148,7 @@ int main() {
 
   gui::camPtr = &camera;
   gui::waterPtrSOSA = &waterSOSA;
+  gui::waterPtrGerstner = &waterGerstner;
   gui::sunPtr = &sun;
   gui::skyboxTexPtr = &texSkybox;
 
@@ -175,8 +185,19 @@ int main() {
 
     // ===== Updates ============================================== //
 
+    using enum global::WaterAlgorithm;
+
     sun.setUniforms(shaderWaterSOSA);
-    waterSOSA.update();
+    sun.setUniforms(shaderWaterGerstner);
+
+    switch (global::waterAlgorithm) {
+      case SOSA:
+        waterSOSA.update();
+        break;
+      case Gerstner:
+        waterGerstner.update();
+        break;
+    }
 
     // ===== Main framebuffer ===================================== //
 
@@ -191,10 +212,22 @@ int main() {
     glDepthFunc(GL_LESS);
 
     switch (global::waterAlgorithm) {
-      case global::WaterAlgorithm::SOSA:
+      case SOSA:
+        shaderWaterSOSA.setUniform1f("u_worldSize", waterSOSA.worldSize);
+
         waterSOSA.texNormheight.bind(0);
         texSkybox.bind(1);
+
         meshWater.draw(&camera, shaderWaterSOSA);
+        break;
+      case Gerstner:
+        shaderWaterGerstner.setUniform1f("u_worldSize", waterGerstner.worldSize);
+
+        waterGerstner.texDisplacement.bind(0);
+        waterGerstner.texNormal.bind(1);
+        texSkybox.bind(2);
+
+        meshWater.draw(&camera, shaderWaterGerstner);
         break;
     }
 

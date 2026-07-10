@@ -1,0 +1,78 @@
+#version 460 core
+
+#include "../common.glsl"
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba32f, binding = 0) writeonly uniform image2D imgDisplacement;
+layout(rgba32f, binding = 1) writeonly uniform image2D imgNormal;
+
+uniform float u_worldSize;
+uniform float u_wavelength;
+uniform float u_amplitude;
+uniform float u_frequency;
+uniform float u_phase;
+uniform float u_wavelengthStep;
+uniform float u_amplitudeStep;
+uniform float u_frequencyStep;
+uniform float u_phaseStep;
+uniform float u_angleStep;
+uniform float u_time;
+uniform int u_N;
+
+void main() {
+  ivec2 texCoord = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 size = imageSize(imgDisplacement);
+  if (texCoord.x >= size.x || texCoord.y >= size.y)
+    return;
+
+  vec2 uv = vec2(texCoord) / vec2(size - 1);
+
+  vec2 sumXZ = vec2(0.f);
+  vec2 xz0 = uv * u_worldSize;
+  float lambda = u_wavelength;
+  float angle = 0.f;
+  float A = u_amplitude;
+  float omega = u_frequency;
+  float phase = u_phase;
+  float sumY = 0.f;
+
+  float dx_dx = 1.f; float dx_dz = 0.f;
+  float dy_dx = 0.f; float dy_dz = 0.f;
+  float dz_dx = 0.f; float dz_dz = 1.f;
+
+  for (int i = 0; i < u_N; i++) {
+    vec2 k_dir = vec2(cos(angle), sin(angle));
+    float k_magnitude = TAU / lambda;
+    vec2 k_wavevector = k_dir * k_magnitude; // The bold k ("... and has magnitude k")
+    float phaseCalc = dot(k_wavevector, xz0) - omega * u_time + phase;
+    float sinP = sin(phaseCalc);
+    float cosP = cos(phaseCalc);
+
+    sumXZ += k_dir * A * sinP;
+    sumY += A * cosP;
+
+    dx_dx -= k_dir.x * k_wavevector.x * A * cosP;
+    dx_dz -= k_dir.x * k_wavevector.y * A * cosP;
+
+    dy_dx -= k_wavevector.x * A * sinP;
+    dy_dz -= k_wavevector.y * A * sinP;
+
+    dz_dx -= k_dir.y * k_wavevector.x * A * cosP;
+    dz_dz -= k_dir.y * k_wavevector.y * A * cosP;
+
+    lambda *= u_wavelengthStep;
+    angle += u_angleStep;
+    A *= u_amplitudeStep;
+    omega *= u_frequencyStep;
+    phase += u_phaseStep;
+  }
+
+  vec3 tangent = vec3(dx_dx, dy_dx, dz_dx);
+  vec3 bitangent = vec3(dx_dz, dy_dz, dz_dz);
+  vec3 normal = normalize(cross(bitangent, tangent));
+
+  imageStore(imgDisplacement, texCoord, vec4(-sumXZ.x, sumY, -sumXZ.y, 1.f));
+  imageStore(imgNormal, texCoord, vec4(normal, 1.f));
+}
+

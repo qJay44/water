@@ -12,16 +12,15 @@ uniform vec3 u_lightDir;
 uniform float u_sunFocus;
 uniform float u_sunIntensity;
 
-layout(binding = 0) uniform sampler2D u_texNormheight;
-layout(binding = 1) uniform samplerCube u_texSkybox;
+layout(binding = 0) uniform sampler2D u_texDisplacement;
+layout(binding = 1) uniform sampler2D u_texNormal;
+layout(binding = 2) uniform samplerCube u_texSkybox;
 
-// FIXME: Something wrong here
 void main() {
   // 1. Directions
-  vec3 normal = normalize(texture(u_texNormheight, v_uv).rgb);
-  vec3 incidentDir = normalize(-v_viewVec);
-  vec3 viewDir = -incidentDir;
-  vec3 reflDir = reflect(incidentDir, normal);
+  vec3 normal = normalize(texture(u_texNormal, v_uv).rgb);
+  vec3 viewDir = normalize(v_viewVec);
+  vec3 reflDir = reflect(-viewDir, normal);
   vec3 halfwayDir = normalize(u_lightDir + viewDir);
   float vDotN = max(dot(viewDir, normal), 0.f);
   float lDotN = max(dot(u_lightDir, normal), 0.f);
@@ -48,7 +47,6 @@ void main() {
 
   // Add the sun on top (Additive)
   finalCol += specularCol;
-  //finalCol = pow(finalCol, vec3(1.f / 2.2f));
 
   FragColor = vec4(finalCol, 1.f);
 }

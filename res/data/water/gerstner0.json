@@ -1,0 +1,13 @@
+{
+  "N": 5,
+  "amplitude": 1.5,
+  "amplitudeStep": 0.6000000238418579,
+  "angleStep": 0.4000000059604645,
+  "frequency": 1.2000000476837158,
+  "frequencyStep": 1.25,
+  "phase": 0.0,
+  "phaseStep": 0.0,
+  "wavelength": 30.0,
+  "wavelengthStep": 0.699999988079071,
+  "worldSize": 1000.0
+}

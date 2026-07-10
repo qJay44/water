@@ -1,5 +1,6 @@
 #include "gui.hpp"
 
+#include <cassert>
 #include <format>
 
 #include "global.hpp"
@@ -17,6 +18,7 @@ static bool collapsed = true;
 
 Camera* gui::camPtr = nullptr;
 water::SOSA* gui::waterPtrSOSA = nullptr;
+water::Gerstner* gui::waterPtrGerstner = nullptr;
 Sun* gui::sunPtr = nullptr;
 TextureCubemap* gui::skyboxTexPtr = nullptr;
 
@@ -59,7 +61,7 @@ void gui::draw() {
 
   // ===== Spectate camera =============================================================================== //
 
-  if (!camPtr) error("The spectate camera is not linked to gui");
+  assert(camPtr);
   if (CollapsingHeader("Spectate camera")) {
     SliderFloat("Near##1", &camPtr->nearPlane, 0.01f, 1.f);
     SliderFloat("Far##1", &camPtr->farPlane,  10.f, 1000.f);
@@ -72,46 +74,88 @@ void gui::draw() {
 
   // ===== Water ========================================================================================= //
 
-  if (!waterPtrSOSA) error("The water is not linked to gui");
   if (CollapsingHeader("Water")) {
     using enum global::WaterAlgorithm;
 
-    BeginDisabled(global::waterAlgorithm != SOSA);
-    if (TreeNode("Sum of sines approximation")) {
-      SeparatorText("Config");
-      SliderFloat("Wavelength", &waterPtrSOSA->wavelength, 0.f, 100.f);
-      SliderFloat("Speed", &waterPtrSOSA->speed, 0.f, 100.f);
-      SliderFloat("Amplitude", &waterPtrSOSA->amplitude, 0.f, 100.f);
-      SliderFloat("Persistence", &waterPtrSOSA->persistence, 0.f, 1.f);
-      SliderFloat("Lacunarity", &waterPtrSOSA->lacunarity, 1.f, 10.f);
-      SliderFloat("Speed mutiplier", &waterPtrSOSA->speedMul, 0.f, 2.f);
-      SliderFloat("Drag mutiplier", &waterPtrSOSA->dragMul, 0.f, 2.f);
-      SliderInt("Waves", &waterPtrSOSA->waves, 1, 32);
+    if (RadioButton("Sum of sines approximation", global::waterAlgorithm == SOSA)) global::waterAlgorithm = SOSA;
+    if (RadioButton("Gerstner##1", global::waterAlgorithm == Gerstner)) global::waterAlgorithm = Gerstner;
 
-      SeparatorText("Load/Save");
+    switch (global::waterAlgorithm) {
+      case SOSA:
+      {
+        assert(waterPtrSOSA);
 
-      static char bufLoad[256]{"sosa0"};
-      static char bufSave[256]{"sosa0"};
+        SeparatorText("Config");
+        SliderFloat("World size", &waterPtrSOSA->worldSize, 0.f, 100.f);
+        SliderFloat("Wavelength", &waterPtrSOSA->wavelength, 0.f, 100.f);
+        SliderFloat("Speed", &waterPtrSOSA->speed, 0.f, 100.f);
+        SliderFloat("Amplitude", &waterPtrSOSA->amplitude, 0.f, 100.f);
+        SliderFloat("Persistence", &waterPtrSOSA->persistence, 0.f, 1.f);
+        SliderFloat("Lacunarity", &waterPtrSOSA->lacunarity, 1.f, 10.f);
+        SliderFloat("Speed mutiplier", &waterPtrSOSA->speedMul, 0.f, 2.f);
+        SliderFloat("Drag mutiplier", &waterPtrSOSA->dragMul, 0.f, 2.f);
+        SliderInt("Waves", &waterPtrSOSA->waves, 1, 32);
 
-      InputText(".json##0", bufLoad, sizeof(bufLoad)); SameLine();
-      if (Button("Load") && bufLoad[0])
-        water::loadPreset(*waterPtrSOSA, std::format("{}.json", bufLoad));
+        SeparatorText("Load/Save");
 
-      InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
-      if (Button("Save") && bufSave[0])
-        water::savePreset(*waterPtrSOSA, std::format("{}.json", bufSave));
+        static char bufLoad[256]{"sosa0"};
+        static char bufSave[256]{"sosa0"};
 
-      SeparatorText("Texture");
-      Image(waterPtrSOSA->texNormheight.getId(), vec2(global::getWinCenter()) * 0.5f);
+        InputText(".json##0", bufLoad, sizeof(bufLoad)); SameLine();
+        if (Button("Load") && bufLoad[0])
+          water::loadPreset(*waterPtrSOSA, std::format("{}.json", bufLoad));
 
-      TreePop();
+        InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
+        if (Button("Save") && bufSave[0])
+          water::savePreset(*waterPtrSOSA, std::format("{}.json", bufSave));
+
+        SeparatorText("Texture");
+        Image(waterPtrSOSA->texNormheight.getId(), vec2(global::getWinCenter()) * 0.5f);
+        break;
+      }
+      case Gerstner:
+      {
+        assert(waterPtrGerstner);
+
+        SliderFloat("World size", &waterPtrGerstner->worldSize,  0.f, 100.f);
+        SliderFloat("Wavelength", &waterPtrGerstner->wavelength, 0.f, 100.f);
+        SliderFloat("Amplitude",  &waterPtrGerstner->amplitude,  0.f, 100.f);
+        SliderFloat("Frequency",  &waterPtrGerstner->frequency,  0.f, 100.f);
+        SliderFloat("Phase",      &waterPtrGerstner->phase,      0.f, 100.f);
+        SliderInt("Count (N)",    &waterPtrGerstner->N,          0  , 20);
+
+        SliderFloat("Wavelength (step)", &waterPtrGerstner->wavelengthStep, 0.f, 10.f);
+        SliderFloat("Amplitude (step)",  &waterPtrGerstner->amplitudeStep,  0.f, 1.f);
+        SliderFloat("Frequency (step)",  &waterPtrGerstner->frequencyStep,  0.f, 10.f);
+        SliderFloat("Phase (step)",      &waterPtrGerstner->phaseStep,      0.f, 10.f);
+        SliderAngle("Angle (step)",      &waterPtrGerstner->angleStep);
+
+        SeparatorText("Load/Save");
+
+        static char bufLoad[256]{"gerstner0"};
+        static char bufSave[256]{"gerstner0"};
+
+        InputText(".json##0", bufLoad, sizeof(bufLoad)); SameLine();
+        if (Button("Load") && bufLoad[0])
+          water::loadPreset(*waterPtrGerstner, std::format("{}.json", bufLoad));
+
+        InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
+        if (Button("Save") && bufSave[0])
+          water::savePreset(*waterPtrGerstner, std::format("{}.json", bufSave));
+
+        SeparatorText("Displacement and Normal textures");
+        vec2 imgScale = vec2(global::getWinCenter()) * 0.25f;
+        Image(waterPtrGerstner->texDisplacement.getId(), imgScale); SameLine();
+        Image(waterPtrGerstner->texNormal.getId(), imgScale);
+
+        break;
+      }
     }
-    EndDisabled();
   }
 
   // ===== Light ========================================================================================= //
 
-  if (!sunPtr) error("The light is not linked to gui");
+  assert(sunPtr);
   if (CollapsingHeader("Light")) {
     bool upd = false;
 

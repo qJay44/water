@@ -10,6 +10,7 @@ namespace water {
 
 // Sum of sines approximation (modified)
 struct SOSA {
+  float worldSize = 1000.f;
   float wavelength = 1.f;
   float amplitude = 1.f;
   float speed = 1.f;
@@ -17,7 +18,6 @@ struct SOSA {
   float lacunarity = 2.f;   // Frequency multipplier (should go higher with each wave)
   float speedMul = 1.3f;    // Speed multipplier (slightly faster each (smaller) wave)
   float dragMul = 0.38f;    // How much waves pull on the water
-  float worldSize = 100.f;
   int waves = 1;
 
   Shader shader = Shader("water/sosa.comp");
@@ -25,6 +25,7 @@ struct SOSA {
 
   void update() {
     shader.use();
+    shader.setUniform1f("u_worldSize", worldSize);
     shader.setUniform1f("u_wavelength", wavelength);
     shader.setUniform1f("u_speed", speed);
     shader.setUniform1f("u_amplitude", amplitude);
@@ -32,7 +33,6 @@ struct SOSA {
     shader.setUniform1f("u_lacunarity", lacunarity);
     shader.setUniform1f("u_speedMul", speedMul);
     shader.setUniform1f("u_dragMul", dragMul);
-    shader.setUniform1f("u_worldSize", worldSize);
     shader.setUniform1f("u_time", global::time);
     shader.setUniform1i("u_count", waves);
     glBindImageTexture(0, texNormheight.getId(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
