@@ -114,8 +114,8 @@ std::string Shader::load(std::unordered_set<std::string>& includedShaders, fspat
   std::string line;
   int lineOffset = 1;
   while (std::getline(file, line)) {
-    auto includeStart = line.find(includePrefix);
-    if (includeStart != line.npos) {
+    auto includeStart = line.starts_with(includePrefix);
+    if (includeStart) {
       // Get include path
       line = line.substr(line.find_first_of("\"") + 1);
       line.pop_back();

@@ -4,6 +4,7 @@
 #define PI_2 (PI * 0.5f)
 #define PI_3 (PI / 3.f)
 #define PI_6 (PI / 6.f)
+#define TAU (2.f * PI)
 
 #define IM_VEC2_CLASS_EXTRA                                             \
   constexpr ImVec2(const vec2& f) : x(f.x), y(f.y) {}                   \

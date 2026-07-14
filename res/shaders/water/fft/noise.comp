@@ -1,0 +1,38 @@
+#version 460 core
+
+#include "../../common.glsl"
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(rg32f, binding = 0) writeonly uniform image2D imgWrite;
+
+uniform float u_seed1;
+uniform float u_seed2;
+
+// [0, 1]
+float rand(vec2 coord) {
+  return fract(sin(dot(coord.xy, vec2(12.9898f, 78.233f))) * 43758.5453f);
+}
+
+float gaussianNoise(vec2 coord, float seed) {
+  float u1 = rand(coord + vec2(seed, 1.f));
+  float u2 = rand(coord + vec2(seed, 2.f));
+  u1 = max(u1, 1e-6f);
+
+  float z0 = sqrt(-2.f * log(u1)) * cos(TAU * u2);
+
+  return z0;
+}
+
+void main() {
+  ivec2 texCoord = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 size = imageSize(imgWrite);
+  if (texCoord.x >= size.x || texCoord.y >= size.y)
+    return;
+
+  float XIr = gaussianNoise(texCoord, u_seed1);
+  float XIi = gaussianNoise(texCoord, u_seed2);
+
+  imageStore(imgWrite, texCoord, vec4(XIr, XIi, 0.f, 1.f));
+}
+

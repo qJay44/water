@@ -19,6 +19,7 @@ static bool collapsed = true;
 Camera* gui::camPtr = nullptr;
 water::SOSA* gui::waterPtrSOSA = nullptr;
 water::Gerstner* gui::waterPtrGerstner = nullptr;
+water::FFT* gui::waterPtrFFT = nullptr;
 Sun* gui::sunPtr = nullptr;
 TextureCubemap* gui::skyboxTexPtr = nullptr;
 
@@ -55,6 +56,10 @@ void gui::draw() {
 
   SetNextWindowCollapsed(collapsed);
 
+  const vec2 winSize = global::getWinSize();
+  const float winLongestPart = glm::max(winSize.x, winSize.y);
+  const ImVec2 imgSize = vec2(winLongestPart * 0.125f);
+
   Begin("Settings");
 
   ImGui::Text("FPS: %d / %f.5 ms", fps, global::dt);
@@ -78,17 +83,51 @@ void gui::draw() {
     using enum global::WaterAlgorithm;
 
     bool u = false;
-    u |= SliderInt("Texture resolution", &water::texResolution, 1, 8192);
-    u |= SliderInt("Mesh resolution", &water::meshResolution, 1, 2048);
+
+    Text("Texture resolution (%d)", water::texResolution);
+    SameLine();
+    {
+      if (ArrowButton("##left##1", ImGuiDir_Left)) {
+        water::texResolution >>= 1;
+        water::texResolution = glm::max(water::texResolution, 128);
+        u = true;
+      }
+      SameLine();
+
+      if (ArrowButton("##right##1", ImGuiDir_Right)) {
+        water::texResolution <<= 1;
+        water::texResolution = glm::min(water::texResolution, 8192);
+        u = true;
+      }
+    }
+
+    Text("Mesh resolution (%d)", water::meshResolution);
+    SameLine();
+    {
+      if (ArrowButton("##left##2", ImGuiDir_Left)) {
+        water::meshResolution >>= 1;
+        water::meshResolution = glm::max(water::texResolution, 128);
+        u = true;
+      }
+      SameLine();
+
+      if (ArrowButton("##right##2", ImGuiDir_Right)) {
+        water::meshResolution <<= 1;
+        water::meshResolution = glm::min(water::meshResolution, 512);
+        u = true;
+      }
+    }
 
     if (u) {
       water::update();
       waterPtrSOSA->rebuild();
       waterPtrGerstner->rebuild();
+      waterPtrFFT->rebuild();
     }
 
     if (RadioButton("Sum of sines approximation", global::waterAlgorithm == SOSA)) global::waterAlgorithm = SOSA;
     if (RadioButton("Gerstner##1", global::waterAlgorithm == Gerstner)) global::waterAlgorithm = Gerstner;
+    if (RadioButton("Fourier transform", global::waterAlgorithm == FFT)) global::waterAlgorithm = FFT;
 
     switch (global::waterAlgorithm) {
       case SOSA:
@@ -120,7 +159,7 @@ void gui::draw() {
           water::savePreset(*waterPtrSOSA, std::format("{}.json", bufSave));
 
         SeparatorText("Texture");
-        Image(waterPtrSOSA->texNormheight.getId(), vec2(global::getWinCenter()) * 0.5f);
+        Image(waterPtrSOSA->texNormheight.getId(), imgSize);
         break;
       }
       case Gerstner:
@@ -154,9 +193,52 @@ void gui::draw() {
           water::savePreset(*waterPtrGerstner, std::format("{}.json", bufSave));
 
         SeparatorText("Displacement and Normal textures");
-        vec2 imgScale = vec2(global::getWinCenter()) * 0.25f;
-        Image(waterPtrGerstner->texDisplacement.getId(), imgScale); SameLine();
-        Image(waterPtrGerstner->texNormal.getId(), imgScale);
+        Image(waterPtrGerstner->texDisplacement.getId(), imgSize); SameLine();
+        Image(waterPtrGerstner->texNormal.getId(), imgSize);
+
+        break;
+      }
+      case FFT:
+      {
+        assert(waterPtrFFT);
+
+        SeparatorText("Gaussian noise");
+        {
+          bool u = false;
+          u |= DragFloat("Seed XIr", &waterPtrFFT->seed1);
+          u |= DragFloat("Seed XIi", &waterPtrFFT->seed2);
+
+          if (u) {
+            waterPtrFFT->generateNoise();
+            waterPtrFFT->generateWaveHeightField();
+          }
+        }
+
+        SeparatorText("The spectrum part");
+        {
+          bool u = false;
+          u |= SliderFloat("Amplitude",  &waterPtrFFT->amplitude,  0.f, 100.f);
+          u |= SliderFloat("Wind speed", &waterPtrFFT->windSpeed,  0.f, 100.f);
+          u |= SliderFloat("G",          &waterPtrFFT->g,  0.f, 100.f);
+          u |= SliderAngle("Wind angle", &waterPtrFFT->windAngle, 0.f, 360.f);
+
+          if (u)
+            waterPtrFFT->generateWaveHeightField();
+        }
+
+        SeparatorText("Gaussian noise / h0(k) with omega / h(k,t)");
+        Image(waterPtrFFT->texNoise.getId(), imgSize); SameLine();
+        Image(waterPtrFFT->texWaveHeightField.getId(), imgSize); SameLine();
+        Image(waterPtrFFT->texWaveHeightFieldTimeEvolution.getId(), imgSize);
+
+        SeparatorText("IFFTs: ChoppyX / Height field / ChoppyZ");
+        SliderFloat("Choppiness", &waterPtrFFT->choppinessControl,  0.f, 100.f);
+        Image(waterPtrFFT->texWaveHeightFieldTimeEvolution_IFFT.getId(), imgSize); SameLine();
+        Image(waterPtrFFT->texWaveChoppyX_IFFT.getId(), imgSize); SameLine();
+        Image(waterPtrFFT->texWaveChoppyZ_IFFT.getId(), imgSize);
+
+        SeparatorText("Displacement");
+        Image(waterPtrFFT->texDisplacement.getId(), imgSize);
 
         break;
       }

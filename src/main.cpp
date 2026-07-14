@@ -1,6 +1,7 @@
 #include "engine/mesh/MeshElements.hpp"
 #include "global.hpp"
 #include "water/ConfigManager.hpp"
+#include "water/FFT.hpp"
 #include "water/Gerstner.hpp"
 #include "water/general.hpp"
 #include <cstdio>
@@ -103,6 +104,7 @@ int main() {
   Shader shaderAxis("axis.vert", "axis.frag");
   Shader shaderWaterSOSA("water/sosa.vert", "water/sosa.frag");
   Shader shaderWaterGerstner("water/gerstner.vert", "water/gerstner.frag");
+  Shader shaderWaterFFT("water/fft.vert", "water/fft.frag");
   Shader shaderSkybox("skybox.vert", "skybox.frag");
 
   // ===== Cameras ============================================== //
@@ -133,6 +135,8 @@ int main() {
   water::Gerstner waterGerstner{};
   water::loadPreset(waterGerstner, "gerstner0.json");
 
+  water::FFT waterFFT{};
+
   // ===== Other ================================================ //
 
   auto meshSkybox = MeshElements::loadFromOBJ("res/obj/Cube.obj");
@@ -150,8 +154,11 @@ int main() {
   gui::camPtr = &camera;
   gui::waterPtrSOSA = &waterSOSA;
   gui::waterPtrGerstner = &waterGerstner;
+  gui::waterPtrFFT = &waterFFT;
   gui::sunPtr = &sun;
   gui::skyboxTexPtr = &texSkybox;
+
+  global::waterAlgorithm = global::WaterAlgorithm::FFT;
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -190,6 +197,7 @@ int main() {
 
     sun.setUniforms(shaderWaterSOSA);
     sun.setUniforms(shaderWaterGerstner);
+    sun.setUniforms(shaderWaterFFT);
 
     switch (global::waterAlgorithm) {
       case SOSA:
@@ -197,6 +205,9 @@ int main() {
         break;
       case Gerstner:
         waterGerstner.update();
+        break;
+      case FFT:
+        waterFFT.update();
         break;
     }
 
@@ -229,6 +240,13 @@ int main() {
         texSkybox.bind(2);
 
         water::mesh.draw(&camera, shaderWaterGerstner);
+        break;
+      case FFT:
+        shaderWaterFFT.setUniform1f("u_worldSize", waterFFT.worldSize);
+
+        waterFFT.texDisplacement.bind(0);
+        texSkybox.bind(2);
+        water::mesh.draw(&camera, shaderWaterFFT);
         break;
     }
 

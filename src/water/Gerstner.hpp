@@ -22,9 +22,9 @@ struct Gerstner {
   float phaseStep = 1.f;
   float angleStep = 1.f;  // rotate k_vector by angleStep
 
-  Shader shader = Shader("water/gerstner.comp");
-  Texture2D texDisplacement = Texture2D(ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA});
-  Texture2D texNormal = Texture2D(ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA});
+  Shader shader{"water/gerstner.comp"};
+  Texture2D texDisplacement{ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA}};
+  Texture2D texNormal{ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA}};
 
   void update() {
     shader.use();

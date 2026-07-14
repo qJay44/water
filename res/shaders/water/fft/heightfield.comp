@@ -1,0 +1,53 @@
+#version 460 core
+
+#include "../../common.glsl"
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(rg32f, binding = 0) readonly  uniform image2D imgNoise;
+layout(rgba32f, binding = 1) writeonly uniform image2D imgWrite;
+
+uniform float u_worldSize;
+uniform float u_amplitude;
+uniform float u_L;
+uniform float u_g;
+uniform float u_waterDepth;
+uniform vec2 u_windDir;
+
+void main() {
+  ivec2 texCoord = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 size = imageSize(imgWrite);
+
+  // [-N/2, N/2]
+  // float n = texCoord.x - size.x / 2;
+  // float m = texCoord.y - size.y / 2;
+
+  float n = (texCoord.x < size.x / 2) ? float(texCoord.x) : float(texCoord.x - size.x);
+  float m = (texCoord.y < size.y / 2) ? float(texCoord.y) : float(texCoord.y - size.y);
+
+  float kx = (TAU * n) / u_worldSize;
+  float kz = (TAU * m) / u_worldSize;
+
+  vec2 k_wavevector = vec2(kx, kz);
+  float k_magnitudeSq = dot(k_wavevector, k_wavevector);
+
+  if (k_magnitudeSq < 1e-4f) {
+    imageStore(imgWrite, texCoord, vec4(0.f));
+    return;
+  }
+
+  float k_magnitude = sqrt(k_magnitudeSq);
+
+  float k4 = sq(k_magnitudeSq);
+  vec2 k_dir = k_wavevector / k_magnitude;
+  float k_dot_w = dot(k_dir, u_windDir);
+
+  float spectrum = u_amplitude * exp(-1.f / sq(k_magnitude * u_L)) / k4 * sq(k_dot_w);
+  float omega = sqrt(u_g * k_magnitude * tanh(k_magnitude * u_waterDepth));
+
+  vec2 noise = imageLoad(imgNoise, texCoord).rg;
+  vec2 h0 = noise * sqrt(spectrum) * 0.70710678118f; // 1.0 / sqrt(2.0)
+
+  imageStore(imgWrite, texCoord, vec4(h0, 0.f, omega));
+}
+
