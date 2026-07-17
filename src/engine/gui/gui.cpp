@@ -19,7 +19,7 @@ static bool collapsed = true;
 Camera* gui::camPtr = nullptr;
 water::SOSA* gui::waterPtrSOSA = nullptr;
 water::Gerstner* gui::waterPtrGerstner = nullptr;
-water::FFT* gui::waterPtrFFT = nullptr;
+water::Tessendorf* gui::waterPtrTessendorf = nullptr;
 Sun* gui::sunPtr = nullptr;
 TextureCubemap* gui::skyboxTexPtr = nullptr;
 
@@ -37,9 +37,11 @@ static void RenderTexture(ImTextureRef tex, ImVec2 size = ImVec2(0, 0)) {
   Image(tex, imgSize, imgUV0, imgUV1);
 }
 
-static void ApplySwizzle(const Texture& tex, const GLint (&swizzle)[4]) {
+// TODO: Undo swizzle?
+[[maybe_unused]]
+static void ApplySwizzle(const Texture& tex, const std::array<GLint, 4>& swizzle) {
   tex.bind();
-  glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+  glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle.data());
   tex.unbind();
 }
 
@@ -111,6 +113,10 @@ void gui::draw() {
       if (ArrowButton("##right##1", ImGuiDir_Right)) {
         water::texResolution <<= 1;
         water::texResolution = glm::min(water::texResolution, 8192);
+
+        if (global::waterAlgorithm == Tessendorf)
+          water::texResolution = glm::min(water::texResolution, 1024);
+
         u = true;
       }
     }
@@ -118,30 +124,35 @@ void gui::draw() {
     Text("Mesh resolution (%d)", water::meshResolution);
     SameLine();
     {
+      bool um = false;
+
       if (ArrowButton("##left##2", ImGuiDir_Left)) {
         water::meshResolution >>= 1;
-        water::meshResolution = glm::max(water::texResolution, 128);
-        u = true;
+        water::meshResolution = glm::max(water::meshResolution, 128);
+        um = true;
       }
       SameLine();
 
       if (ArrowButton("##right##2", ImGuiDir_Right)) {
         water::meshResolution <<= 1;
         water::meshResolution = glm::min(water::meshResolution, 512);
-        u = true;
+        um = true;
       }
+
+      if (um)
+        water::updateMesh();
     }
 
     if (u) {
-      water::update();
+      water::updateWorkGroups();
       waterPtrSOSA->rebuild();
       waterPtrGerstner->rebuild();
-      waterPtrFFT->rebuild();
+      waterPtrTessendorf->rebuild();
     }
 
     if (RadioButton("Sum of sines approximation", global::waterAlgorithm == SOSA)) global::waterAlgorithm = SOSA;
     if (RadioButton("Gerstner##1", global::waterAlgorithm == Gerstner)) global::waterAlgorithm = Gerstner;
-    if (RadioButton("Tessendorf", global::waterAlgorithm == FFT)) global::waterAlgorithm = FFT;
+    if (RadioButton("Tessendorf", global::waterAlgorithm == Tessendorf)) global::waterAlgorithm = Tessendorf;
 
     switch (global::waterAlgorithm) {
       case SOSA:
@@ -212,36 +223,38 @@ void gui::draw() {
 
         break;
       }
-      case FFT:
+      case Tessendorf:
       {
         assert(waterPtrFFT);
+        SeparatorText("General");
+        SliderFloat("Mesh scale", &waterPtrTessendorf->worldSize, 1.f, 5000.f);
 
         SeparatorText("Noise settings");
         {
           bool u = false;
-          u |= DragFloat("Seed XIr", &waterPtrFFT->seed1);
-          u |= DragFloat("Seed XIi", &waterPtrFFT->seed2);
+          u |= DragFloat("Seed XIr", &waterPtrTessendorf->seed1);
+          u |= DragFloat("Seed XIi", &waterPtrTessendorf->seed2);
 
           if (u) {
-            waterPtrFFT->generateNoise();
-            waterPtrFFT->generateInitials();
+            waterPtrTessendorf->generateNoise();
+            waterPtrTessendorf->generateInitials();
           }
         }
         SeparatorText("Gaussian noise / Precomputed twiddle factors and input indices (stretched)");
-        RenderTexture(waterPtrFFT->texNoise.getId()); SameLine();
-        RenderTexture(waterPtrFFT->texPrecomputedTwiddleFactorsAndInputIndices.getId());
+        RenderTexture(waterPtrTessendorf->texNoise.getId()); SameLine();
+        RenderTexture(waterPtrTessendorf->texButterfly.getId());
 
         SeparatorText("General settings");
         {
           bool u = false;
 
-          u |= SliderFloat("G", &waterPtrFFT->g, 0.f, 100.f);
-          u |= SliderFloat("Depth", &waterPtrFFT->depth, 0.f, 100.f);
-          u |= SliderFloat("Lambda", &waterPtrFFT->lambda, 0.f, 1.f);
-          u |= SliderFloat("Length scale", &waterPtrFFT->lengthScale, 0.f, 1000.f);
+          u |= SliderFloat("G", &waterPtrTessendorf->g, 0.f, 100.f);
+          u |= SliderFloat("Depth", &waterPtrTessendorf->depth, 0.f, 100.f);
+          u |= SliderFloat("Lambda", &waterPtrTessendorf->lambda, 0.f, 1.f);
+          u |= SliderFloat("Length scale", &waterPtrTessendorf->lengthScale, 0.f, 1000.f);
 
           if (TreeNode("Local spectrum settings")) {
-            auto& settings = waterPtrFFT->local;
+            auto& settings = waterPtrTessendorf->local;
             u |= SliderFloat("Scale", &settings.scale, 0.f, 1.f);
             u |= SliderFloat("Wind speed", &settings.windSpeed, 0.f, 100.f);
             u |= SliderAngle("Wind direction", &settings.windDir, 0.f);
@@ -255,7 +268,7 @@ void gui::draw() {
           }
 
           if (TreeNode("Swell spectrum settings")) {
-            auto& settings = waterPtrFFT->swell;
+            auto& settings = waterPtrTessendorf->swell;
             u |= SliderFloat("Scale##2", &settings.scale, 0.f, 1.f);
             u |= SliderFloat("Wind speed##2", &settings.windSpeed, 0.f, 100.f);
             u |= SliderAngle("Wind direction##2", &settings.windDir, 0.f);
@@ -269,33 +282,19 @@ void gui::draw() {
           }
 
           if (u)
-            waterPtrFFT->generateInitials();
+            waterPtrTessendorf->generateInitials();
         }
 
         SeparatorText("Precomputed Data / Conjugated Spectrum");
-        RenderTexture(waterPtrFFT->texPrecomputedData.getId()); SameLine();
-        RenderTexture(waterPtrFFT->texInitialSpectrum.getId());
+        RenderTexture(waterPtrTessendorf->texPrecomputedData.getId()); SameLine();
+        RenderTexture(waterPtrTessendorf->texInitialSpectrum.getId());
 
         SeparatorText("Displacement / Derivatives / Turbulence");
-        {
-          static bool ia = false;
-          Checkbox("Ignore alpha", &ia);
+        RenderTexture(waterPtrTessendorf->texDisplacement.getId()); SameLine();
+        RenderTexture(waterPtrTessendorf->texDerivatives.getId()); SameLine();
 
-          if (ia) {
-            static const GLint swizzle[4] = {GL_RED, GL_GREEN, GL_BLUE, GL_ONE};
-            ApplySwizzle(waterPtrFFT->texDisplacement, swizzle);
-            ApplySwizzle(waterPtrFFT->texDerivatives, swizzle);
-          }
-
-          RenderTexture(waterPtrFFT->texDisplacement.getId()); SameLine();
-          RenderTexture(waterPtrFFT->texDerivatives.getId()); SameLine();
-        }
-
-        {
-          static const GLint swizzle[4] = {GL_RED, GL_RED, GL_RED, GL_ONE};
-          ApplySwizzle(waterPtrFFT->texTurbulence, swizzle);
-          RenderTexture(waterPtrFFT->texTurbulence.getId());
-        }
+        ApplySwizzle(waterPtrTessendorf->texTurbulence, {GL_RED, GL_RED, GL_RED, GL_ONE});
+        RenderTexture(waterPtrTessendorf->texTurbulence.getId());
 
         break;
       }

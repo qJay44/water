@@ -1,9 +1,3 @@
-#include "engine/mesh/MeshElements.hpp"
-#include "global.hpp"
-#include "water/ConfigManager.hpp"
-#include "water/FFT.hpp"
-#include "water/Gerstner.hpp"
-#include "water/general.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -15,14 +9,20 @@
   #define CHDIR(p) chdir(p);
 #endif
 
-#include "engine/gui/gui.hpp"
 #include "engine/Camera.hpp"
-#include "engine/Shader.hpp"
 #include "engine/InputsHandler.hpp"
+#include "engine/Shader.hpp"
+#include "engine/gui/gui.hpp"
+#include "engine/mesh/MeshElements.hpp"
 #include "engine/mesh/meshes.hpp"
-#include "water/SOSA.hpp"
+#include "global.hpp"
 #include "other/Sun.hpp"
 #include "utils/clrp.hpp"
+#include "water/ConfigManager.hpp"
+#include "water/Tessendorf.hpp"
+#include "water/Gerstner.hpp"
+#include "water/SOSA.hpp"
+#include "water/general.hpp"
 
 using global::window;
 
@@ -104,7 +104,7 @@ int main() {
   Shader shaderAxis("axis.vert", "axis.frag");
   Shader shaderWaterSOSA("water/sosa.vert", "water/sosa.frag");
   Shader shaderWaterGerstner("water/gerstner.vert", "water/gerstner.frag");
-  Shader shaderWaterFFT("water/fft.vert", "water/fft.frag");
+  Shader shaderWaterFFT("water/tessendorf.vert", "water/tessendorf.frag");
   Shader shaderSkybox("skybox.vert", "skybox.frag");
 
   // ===== Cameras ============================================== //
@@ -135,7 +135,7 @@ int main() {
   water::Gerstner waterGerstner{};
   water::loadPreset(waterGerstner, "gerstner0.json");
 
-  water::FFT waterFFT{};
+  water::Tessendorf waterTessendorf{};
 
   // ===== Other ================================================ //
 
@@ -154,11 +154,11 @@ int main() {
   gui::camPtr = &camera;
   gui::waterPtrSOSA = &waterSOSA;
   gui::waterPtrGerstner = &waterGerstner;
-  gui::waterPtrFFT = &waterFFT;
+  gui::waterPtrTessendorf = &waterTessendorf;
   gui::sunPtr = &sun;
   gui::skyboxTexPtr = &texSkybox;
 
-  global::waterAlgorithm = global::WaterAlgorithm::FFT;
+  global::waterAlgorithm = global::WaterAlgorithm::Tessendorf;
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -206,8 +206,8 @@ int main() {
       case Gerstner:
         waterGerstner.update();
         break;
-      case FFT:
-        waterFFT.update();
+      case Tessendorf:
+        waterTessendorf.update();
         break;
     }
 
@@ -241,12 +241,13 @@ int main() {
 
         water::mesh.draw(&camera, shaderWaterGerstner);
         break;
-      case FFT:
-        shaderWaterFFT.setUniform1f("u_worldSize", waterFFT.worldSize);
-        shaderWaterFFT.setUniform1f("u_lengthScale", waterFFT.lengthScale);
+      case Tessendorf:
+        shaderWaterFFT.setUniform1f("u_worldSize", waterTessendorf.worldSize);
+        shaderWaterFFT.setUniform1f("u_lengthScale", waterTessendorf.lengthScale);
+        shaderWaterFFT.setUniform1i("u_size", waterTessendorf.size);
 
-        waterFFT.texDisplacement.bind(0);
-        waterFFT.texDerivatives.bind(1);
+        waterTessendorf.texDisplacement.bind(0);
+        waterTessendorf.texDerivatives.bind(1);
         texSkybox.bind(2);
         water::mesh.draw(&camera, shaderWaterFFT);
         break;

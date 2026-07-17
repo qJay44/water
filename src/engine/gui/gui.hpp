@@ -2,7 +2,7 @@
 
 #include "../../water/SOSA.hpp"
 #include "../../water/Gerstner.hpp"
-#include "../../water/FFT.hpp"
+#include "../../water/Tessendorf.hpp"
 #include "../../other/Sun.hpp"
 #include "../texture/TextureCubemap.hpp"
 #include "../Camera.hpp"
@@ -11,7 +11,7 @@ struct gui {
   static Camera* camPtr;
   static water::SOSA* waterPtrSOSA;
   static water::Gerstner* waterPtrGerstner;
-  static water::FFT* waterPtrFFT;
+  static water::Tessendorf* waterPtrTessendorf;
   static Sun* sunPtr;
   static TextureCubemap* skyboxTexPtr;
   static u16 fps;

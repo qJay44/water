@@ -11,7 +11,7 @@ static const union { vec3 forward {0.f, 0.f, 1.f}, blue;  };
 enum class WaterAlgorithm {
   SOSA,
   Gerstner,
-  FFT
+  Tessendorf
 };
 
 extern GLFWwindow* window;

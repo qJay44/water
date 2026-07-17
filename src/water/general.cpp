@@ -1,22 +1,25 @@
 #include "general.hpp"
 
-#include "SOSA.hpp"
-#include "Gerstner.hpp"
+#include "../engine/mesh/meshes.hpp"
 
 namespace water {
 
-int texResolution = 1024;
+int texResolution = 1024; // NOTE: Keep this in power of 2
 int meshResolution = 512;
-MeshElements mesh;
 
-int numWorkGroups = texResolution / 16;
+MeshElements mesh;
+int numWorkGroups;
 
 void init() {
-  update();
+  updateWorkGroups();
+  updateMesh();
 }
 
-void update() {
-  numWorkGroups = (texResolution + 15) / 16;
+void updateWorkGroups() {
+  numWorkGroups = texResolution / 8;
+}
+
+void updateMesh() {
   mesh = meshes::plane(meshResolution);
 }
 

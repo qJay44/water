@@ -9,14 +9,13 @@ out vec2 v_uv;
 uniform mat4 u_camPV;
 uniform vec3 u_camPos;
 uniform float u_worldSize;
-uniform float u_lengthScale;
 
 layout(binding = 0) uniform sampler2D u_texDisplacement;
 
 void main() {
   vec2 uv = a_pos.xz * 0.5f + 0.5f;
   vec3 basePos = vec3(uv.x * u_worldSize, a_pos.y, uv.y * u_worldSize);
-  vec3 displacement = vec3(texture(u_texDisplacement, uv).rgb);
+  vec3 displacement = texture(u_texDisplacement, uv).rgb;
   vec4 worldPos = vec4(basePos + displacement, 1.f);
 
   v_worldPos = worldPos.xyz;

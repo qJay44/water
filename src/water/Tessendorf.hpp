@@ -3,10 +3,11 @@
 #include "../engine/Shader.hpp"
 #include "../engine/texture/Texture2D.hpp"
 #include "../engine/mesh/BufferObject.hpp"
+#include "general.hpp"
 
 namespace water {
 
-struct FFT {
+struct Tessendorf {
   struct SpectrumSettingsGUI {
     float scale;
     float windSpeed;
@@ -35,13 +36,11 @@ struct FFT {
   } ubo;
 
   static bool isCreated;
-  float worldSize = 1000.f;
+  float worldSize = 256.f;
 
-  // NOTE: Keep this in power of 2
-  int size = 256;
-  int logSize = 8;
+  int& size = texResolution;
+  int logSize;
 
-  GLuint numWorkGroups = size / 8;
   float seed1 = 13.37f;
   float seed2 = 42.f;
 
@@ -74,17 +73,17 @@ struct FFT {
   float lengthScale = 5;
   float lambda = 1.f;
 
-  Shader shaderPrecomputedTwiddleFactorsAndInputIndices { "water/fft/precomputedTwiddleFactorsAndInputIndices.comp" };
-  Shader shaderNoise                                    { "water/fft/noise.comp"                                    };
-  Shader shaderInitialSpectrum                          { "water/fft/initialSpectrum.comp"                          };
-  Shader shaderConjugateSpectrum                        { "water/fft/conjugateSpectrum.comp"                        };
-  Shader shaderTimeSpectrum                             { "water/fft/timeSpectrum.comp"                             };
-  Shader shaderIFFT_horizontal                          { "water/fft/ifft_horizontal.comp"                          };
-  Shader shaderIFFT_vertical                            { "water/fft/ifft_vertical.comp"                            };
-  Shader shaderPermute                                  { "water/fft/permute.comp"                                  };
-  Shader shaderMerge                                    { "water/fft/merge.comp"                                    };
+  Shader shaderButterfly         { "water/fft/butterfly.comp"         };
+  Shader shaderNoise             { "water/fft/noise.comp"             };
+  Shader shaderInitialSpectrum   { "water/fft/initialSpectrum.comp"   };
+  Shader shaderConjugateSpectrum { "water/fft/conjugateSpectrum.comp" };
+  Shader shaderTimeSpectrum      { "water/fft/timeSpectrum.comp"      };
+  Shader shaderIFFT_horizontal   { "water/fft/ifft_horizontal.comp"   };
+  Shader shaderIFFT_vertical     { "water/fft/ifft_vertical.comp"     };
+  Shader shaderPermute           { "water/fft/permute.comp"           };
+  Shader shaderMerge             { "water/fft/merge.comp"             };
 
-  Texture2D texPrecomputedTwiddleFactorsAndInputIndices;
+  Texture2D texButterfly;
   Texture2D texNoise;
   Texture2D texInitialSpectrum;
   Texture2D texPrecomputedData;
@@ -97,7 +96,7 @@ struct FFT {
   Texture2D texDerivatives;
   Texture2D texTurbulence;
 
-  FFT();
+  Tessendorf();
 
   void rebuild();
 

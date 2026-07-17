@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../engine/mesh/meshes.hpp"
+#include "../engine/mesh/MeshElements.hpp"
 
 namespace water {
 
@@ -11,7 +11,8 @@ extern MeshElements mesh;
 extern int numWorkGroups;
 
 void init();
-void update();
+void updateWorkGroups();
+void updateMesh();
 
 } // namespace water
 
