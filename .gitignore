@@ -2,3 +2,4 @@ Build/
 .cache/
 compile_commands.json
 res/tex/Cubemaps/
+*.trace

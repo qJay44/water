@@ -16,33 +16,39 @@ const Texture2D& Texture2D::getDebugTex0() {
   return debug0Tex;
 }
 
-Texture2D Texture2D::storage(const ivec2& size, const TextureDescriptor& desc) {
+Texture2D Texture2D::storage(const image2D& img, const TextureDescriptor& desc) {
   Texture2D tex;
 
   tex.onInit(desc);
-  glTexStorage2D(tex.target, 1, desc.internalFormat, size.x, size.y);
+  glTexStorage2D(tex.target, 1, desc.internalFormat, img.width, img.height);
 
-  if (desc.genMipMap)
-    glGenerateMipmap(desc.target);
+  if (img.pixels)
+    glTexSubImage2D(tex.target, 0, 0, 0, img.width, img.height, desc.format, desc.type, img.pixels);
 
   tex.unbind();
 
   return tex;
 }
 
+Texture2D Texture2D::image(const image2D& img, const TextureDescriptor& desc) {
+  Texture2D tex;
+
+  tex.onInit(desc);
+  glTexImage2D(tex.target, 0, desc.internalFormat, img.width, img.height, 0, desc.format, desc.type, img.pixels);
+  tex.unbind();
+
+  return tex;
+}
+
 Texture2D::Texture2D(const image2D& img, const TextureDescriptor& desc) {
-  onInit(desc);
-
-  glTexImage2D(target, 0, desc.internalFormat, img.width, img.height, 0, desc.format, desc.type, img.pixels);
-
-  if (desc.genMipMap)
-    glGenerateMipmap(desc.target);
-
-  unbind();
+  *this = storage(img, desc);
 }
 
 Texture2D::Texture2D(const ivec2& size, const TextureDescriptor& desc)
   : Texture2D(image2D{size.x, size.y}, desc) {}
+
+Texture2D::Texture2D(int size, const TextureDescriptor& desc)
+  : Texture2D(image2D{size, size}, desc) {}
 
 Texture2D::Texture2D(const fspath& path, const TextureDescriptor& desc)
   : Texture2D(image2D(path), desc) {}

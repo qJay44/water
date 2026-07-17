@@ -4,6 +4,7 @@
 #define GOLDEN_ANGLE (TAU * (2.f - PHI))
 
 #define sq(x) (x*x)
+#define safe_sqrt(x) (sqrt(max(x, 0.f)))
 
 vec2 complexMultiply(vec2 n1, vec2 n2) {
   // (a + bi) * (c + di) = ac + adi + bci + bdi^2

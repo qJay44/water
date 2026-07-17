@@ -243,8 +243,10 @@ int main() {
         break;
       case FFT:
         shaderWaterFFT.setUniform1f("u_worldSize", waterFFT.worldSize);
+        shaderWaterFFT.setUniform1f("u_lengthScale", waterFFT.lengthScale);
 
         waterFFT.texDisplacement.bind(0);
+        waterFFT.texDerivatives.bind(1);
         texSkybox.bind(2);
         water::mesh.draw(&camera, shaderWaterFFT);
         break;

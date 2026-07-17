@@ -25,6 +25,24 @@ TextureCubemap* gui::skyboxTexPtr = nullptr;
 
 u16 gui::fps = 1;
 
+static void RenderTexture(ImTextureRef tex, ImVec2 size = ImVec2(0, 0)) {
+  bool useCustomSize = size.x || size.y;
+
+  vec2 winSize = global::getWinSize();
+  float winLongestPart = glm::max(winSize.x, winSize.y);
+  ImVec2 imgSize = useCustomSize ? size : ImVec2(vec2(winLongestPart * 0.125f));
+  ImVec2 imgUV0 = vec2(0.f, 1.f);
+  ImVec2 imgUV1 = vec2(1.f, 0.f);
+
+  Image(tex, imgSize, imgUV0, imgUV1);
+}
+
+static void ApplySwizzle(const Texture& tex, const GLint (&swizzle)[4]) {
+  tex.bind();
+  glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+  tex.unbind();
+}
+
 void gui::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
   ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
 }
@@ -55,10 +73,6 @@ void gui::draw() {
   ImGui::NewFrame();
 
   SetNextWindowCollapsed(collapsed);
-
-  const vec2 winSize = global::getWinSize();
-  const float winLongestPart = glm::max(winSize.x, winSize.y);
-  const ImVec2 imgSize = vec2(winLongestPart * 0.125f);
 
   Begin("Settings");
 
@@ -127,7 +141,7 @@ void gui::draw() {
 
     if (RadioButton("Sum of sines approximation", global::waterAlgorithm == SOSA)) global::waterAlgorithm = SOSA;
     if (RadioButton("Gerstner##1", global::waterAlgorithm == Gerstner)) global::waterAlgorithm = Gerstner;
-    if (RadioButton("Fourier transform", global::waterAlgorithm == FFT)) global::waterAlgorithm = FFT;
+    if (RadioButton("Tessendorf", global::waterAlgorithm == FFT)) global::waterAlgorithm = FFT;
 
     switch (global::waterAlgorithm) {
       case SOSA:
@@ -159,7 +173,7 @@ void gui::draw() {
           water::savePreset(*waterPtrSOSA, std::format("{}.json", bufSave));
 
         SeparatorText("Texture");
-        Image(waterPtrSOSA->texNormheight.getId(), imgSize);
+        RenderTexture(waterPtrSOSA->texNormheight.getId());
         break;
       }
       case Gerstner:
@@ -193,8 +207,8 @@ void gui::draw() {
           water::savePreset(*waterPtrGerstner, std::format("{}.json", bufSave));
 
         SeparatorText("Displacement and Normal textures");
-        Image(waterPtrGerstner->texDisplacement.getId(), imgSize); SameLine();
-        Image(waterPtrGerstner->texNormal.getId(), imgSize);
+        RenderTexture(waterPtrGerstner->texDisplacement.getId()); SameLine();
+        RenderTexture(waterPtrGerstner->texNormal.getId());
 
         break;
       }
@@ -202,7 +216,7 @@ void gui::draw() {
       {
         assert(waterPtrFFT);
 
-        SeparatorText("Gaussian noise");
+        SeparatorText("Noise settings");
         {
           bool u = false;
           u |= DragFloat("Seed XIr", &waterPtrFFT->seed1);
@@ -210,35 +224,78 @@ void gui::draw() {
 
           if (u) {
             waterPtrFFT->generateNoise();
-            waterPtrFFT->generateWaveHeightField();
+            waterPtrFFT->generateInitials();
           }
         }
+        SeparatorText("Gaussian noise / Precomputed twiddle factors and input indices (stretched)");
+        RenderTexture(waterPtrFFT->texNoise.getId()); SameLine();
+        RenderTexture(waterPtrFFT->texPrecomputedTwiddleFactorsAndInputIndices.getId());
 
-        SeparatorText("The spectrum part");
+        SeparatorText("General settings");
         {
           bool u = false;
-          u |= SliderFloat("Amplitude",  &waterPtrFFT->amplitude,  0.f, 100.f);
-          u |= SliderFloat("Wind speed", &waterPtrFFT->windSpeed,  0.f, 100.f);
-          u |= SliderFloat("G",          &waterPtrFFT->g,  0.f, 100.f);
-          u |= SliderAngle("Wind angle", &waterPtrFFT->windAngle, 0.f, 360.f);
+
+          u |= SliderFloat("G", &waterPtrFFT->g, 0.f, 100.f);
+          u |= SliderFloat("Depth", &waterPtrFFT->depth, 0.f, 100.f);
+          u |= SliderFloat("Lambda", &waterPtrFFT->lambda, 0.f, 1.f);
+          u |= SliderFloat("Length scale", &waterPtrFFT->lengthScale, 0.f, 1000.f);
+
+          if (TreeNode("Local spectrum settings")) {
+            auto& settings = waterPtrFFT->local;
+            u |= SliderFloat("Scale", &settings.scale, 0.f, 1.f);
+            u |= SliderFloat("Wind speed", &settings.windSpeed, 0.f, 100.f);
+            u |= SliderAngle("Wind direction", &settings.windDir, 0.f);
+            u |= SliderFloat("Fetch", &settings.fetch, 0.f, 1e6f);
+            u |= SliderFloat("Spread blend", &settings.spreadBlend, 0.f, 1.f);
+            u |= SliderFloat("Swell", &settings.swell, 0.f, 1.f);
+            u |= SliderFloat("Peak enhancement", &settings.peakEnhancemnt, 0.f, 100.f);
+            u |= SliderFloat("Short waves fade", &settings.shortWavesFade, 0.f, 2.f);
+
+            TreePop();
+          }
+
+          if (TreeNode("Swell spectrum settings")) {
+            auto& settings = waterPtrFFT->swell;
+            u |= SliderFloat("Scale##2", &settings.scale, 0.f, 1.f);
+            u |= SliderFloat("Wind speed##2", &settings.windSpeed, 0.f, 100.f);
+            u |= SliderAngle("Wind direction##2", &settings.windDir, 0.f);
+            u |= SliderFloat("Fetch##2", &settings.fetch, 0.f, 1e6f);
+            u |= SliderFloat("Spread blend##2", &settings.spreadBlend, 0.f, 1.f);
+            u |= SliderFloat("Swell##2", &settings.swell, 0.f, 1.f);
+            u |= SliderFloat("Peak enhancement##2", &settings.peakEnhancemnt, 0.f, 100.f);
+            u |= SliderFloat("Short waves fade##2", &settings.shortWavesFade, 0.f, 2.f);
+
+            TreePop();
+          }
 
           if (u)
-            waterPtrFFT->generateWaveHeightField();
+            waterPtrFFT->generateInitials();
         }
 
-        SeparatorText("Gaussian noise / h0(k) with omega / h(k,t)");
-        Image(waterPtrFFT->texNoise.getId(), imgSize); SameLine();
-        Image(waterPtrFFT->texWaveHeightField.getId(), imgSize); SameLine();
-        Image(waterPtrFFT->texWaveHeightFieldTimeEvolution.getId(), imgSize);
+        SeparatorText("Precomputed Data / Conjugated Spectrum");
+        RenderTexture(waterPtrFFT->texPrecomputedData.getId()); SameLine();
+        RenderTexture(waterPtrFFT->texInitialSpectrum.getId());
 
-        SeparatorText("IFFTs: ChoppyX / Height field / ChoppyZ");
-        SliderFloat("Choppiness", &waterPtrFFT->choppinessControl,  0.f, 100.f);
-        Image(waterPtrFFT->texWaveHeightFieldTimeEvolution_IFFT.getId(), imgSize); SameLine();
-        Image(waterPtrFFT->texWaveChoppyX_IFFT.getId(), imgSize); SameLine();
-        Image(waterPtrFFT->texWaveChoppyZ_IFFT.getId(), imgSize);
+        SeparatorText("Displacement / Derivatives / Turbulence");
+        {
+          static bool ia = false;
+          Checkbox("Ignore alpha", &ia);
 
-        SeparatorText("Displacement");
-        Image(waterPtrFFT->texDisplacement.getId(), imgSize);
+          if (ia) {
+            static const GLint swizzle[4] = {GL_RED, GL_GREEN, GL_BLUE, GL_ONE};
+            ApplySwizzle(waterPtrFFT->texDisplacement, swizzle);
+            ApplySwizzle(waterPtrFFT->texDerivatives, swizzle);
+          }
+
+          RenderTexture(waterPtrFFT->texDisplacement.getId()); SameLine();
+          RenderTexture(waterPtrFFT->texDerivatives.getId()); SameLine();
+        }
+
+        {
+          static const GLint swizzle[4] = {GL_RED, GL_RED, GL_RED, GL_ONE};
+          ApplySwizzle(waterPtrFFT->texTurbulence, swizzle);
+          RenderTexture(waterPtrFFT->texTurbulence.getId());
+        }
 
         break;
       }

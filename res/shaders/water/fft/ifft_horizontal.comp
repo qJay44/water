@@ -2,33 +2,24 @@
 
 #include "../../common.glsl"
 
-layout (local_size_x = 16, local_size_y = 16) in;
+layout(local_size_x = 8, local_size_y = 8) in;
 
-layout (rg32f, binding = 0) uniform readonly  image2D imgInput;
-layout (rg32f, binding = 1) uniform writeonly image2D imgOutput;
+layout(rgba32f, binding = 0) readonly  uniform image2D imgPrecomputedData;
+layout(rg32f  , binding = 1) readonly  uniform image2D imgRead;
+layout(rg32f  , binding = 2) writeonly uniform image2D imgWrite;
 
-uniform int u_stage;
+uniform int u_step;
 
 void main() {
-  ivec2 texCoord = ivec2(gl_GlobalInvocationID.xy);
-  int size = imageSize(imgInput).x;
+  ivec2 id = ivec2(gl_GlobalInvocationID.xy);
 
-  int n = texCoord.x < size / 2 ? texCoord.x : texCoord.x - size;
-  int isEvenBlock = n / u_stage;
-  int localIdx = n % u_stage;
+  vec4 data = imageLoad(imgPrecomputedData, ivec2(u_step, id.x));
+  ivec2 inputIndices = ivec2(data.ba);
 
-  int j0 = isEvenBlock * u_stage * 2 + localIdx;
-  int j1 = j0 + u_stage;
+  vec2 complexAmplitude0 = imageLoad(imgRead, ivec2(inputIndices.x, id.y)).rg;
+  vec2 complexAmplitude1 = imageLoad(imgRead, ivec2(inputIndices.y, id.y)).rg;
+  vec2 sumResult = complexAmplitude0 + complexMultiply(vec2(data.r, -data.g), complexAmplitude1);
 
-  vec2 p = imageLoad(imgInput, ivec2(j0, texCoord.y)).rg;
-  vec2 q = imageLoad(imgInput, ivec2(j1, texCoord.y)).rg;
-
-  float angle = (TAU * float(localIdx)) / float(u_stage * 2);
-  vec2 twiddle = vec2(cos(angle), sin(angle));
-
-  float sumSign = texCoord.x < size ? 1.f : -1.f;
-  vec2 result = p + complexMultiply(twiddle, q) * sumSign;
-
-  imageStore(imgOutput, texCoord, vec4(result, 0.0f, 1.0f));
+  imageStore(imgWrite, id, vec4(sumResult, 0.f, 1.f));
 }
 

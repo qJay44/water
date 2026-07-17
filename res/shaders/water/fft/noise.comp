@@ -2,7 +2,7 @@
 
 #include "../../common.glsl"
 
-layout(local_size_x = 16, local_size_y = 16) in;
+layout(local_size_x = 8, local_size_y = 8) in;
 
 layout(rg32f, binding = 0) writeonly uniform image2D imgWrite;
 
@@ -27,11 +27,9 @@ float gaussianNoise(vec2 coord, float seed) {
 void main() {
   ivec2 texCoord = ivec2(gl_GlobalInvocationID.xy);
   ivec2 size = imageSize(imgWrite);
-  if (texCoord.x >= size.x || texCoord.y >= size.y)
-    return;
 
-  float XIr = gaussianNoise(texCoord, u_seed1);
-  float XIi = gaussianNoise(texCoord, u_seed2);
+  float XIr = clamp(gaussianNoise(texCoord, u_seed1), -2.f, 2.f);
+  float XIi = clamp(gaussianNoise(texCoord, u_seed2), -2.f, 2.f);
 
   imageStore(imgWrite, texCoord, vec4(XIr, XIi, 0.f, 1.f));
 }

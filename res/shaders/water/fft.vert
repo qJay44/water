@@ -9,6 +9,7 @@ out vec2 v_uv;
 uniform mat4 u_camPV;
 uniform vec3 u_camPos;
 uniform float u_worldSize;
+uniform float u_lengthScale;
 
 layout(binding = 0) uniform sampler2D u_texDisplacement;
 

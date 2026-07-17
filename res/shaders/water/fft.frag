@@ -13,13 +13,14 @@ uniform float u_sunFocus;
 uniform float u_sunIntensity;
 
 layout(binding = 0) uniform sampler2D u_texDisplacement;
-layout(binding = 1) uniform sampler2D u_texNormal;
+layout(binding = 1) uniform sampler2D u_texDerivatives;
 layout(binding = 2) uniform samplerCube u_texSkybox;
 
 void main() {
   // 1. Directions
-  // vec3 normal = normalize(texture(u_texNormal, v_uv).rgb);
-  vec3 normal = normalize(texture(u_texDisplacement, v_uv).rgb);
+  vec4 derivatives = texture(u_texDerivatives, v_uv);
+  vec2 slope = vec2(derivatives.x / (1.f + derivatives.z), derivatives.y / (1.f + derivatives.w));
+  vec3 normal = normalize(vec3(-slope.x, 1.f, -slope.y));
   vec3 viewDir = normalize(v_viewVec);
   vec3 reflDir = reflect(-viewDir, normal);
   vec3 halfwayDir = normalize(u_lightDir + viewDir);
