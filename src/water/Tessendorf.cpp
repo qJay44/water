@@ -15,9 +15,6 @@ Tessendorf::Tessendorf() {
   if (std::exchange(isCreated, true))
     error("[Tessendorf::Tessendorf] Tessendorf instance already exists");
 
-  texResolution = 512;
-  updateWorkGroups();
-
   ubo.spectrums.gen();
   ubo.spectrums.storage(nullptr, sizeof(spectrums), GL_DYNAMIC_STORAGE_BIT);
   rebuild();
@@ -30,19 +27,19 @@ void Tessendorf::rebuild() {
   logSize = glm::log2((float)size);
 
   texButterfly       = Texture2D(ivec2(logSize, size), descRGBA);
-  texNoise           = Texture2D{size, descRG};
-  texInitialSpectrum = Texture2D{size, descRGBA};
-  texPrecomputedData = Texture2D{size, descRGBA};
-  texBuffer          = Texture2D{size, descRG};
+  texNoise           = Texture2D(size, descRG);
+  texInitialSpectrum = Texture2D(size, descRGBA);
+  texPrecomputedData = Texture2D(size, descRGBA);
+  texBuffer          = Texture2D(size, descRG);
   texDxDz            = Texture2D(size, descRG);
   texDyDxz           = Texture2D(size, descRG);
   texDyxDyz          = Texture2D(size, descRG);
   texDxxDzz          = Texture2D(size, descRG);
-  texDisplacement    = Texture2D{size, descRGBA};
-  texDerivatives     = Texture2D{size, descRGBA};
-  texTurbulence      = Texture2D{size, descR};
+  texDisplacement    = Texture2D(size, descRGBA);
+  texDerivatives     = Texture2D(size, descRGBA);
+  texTurbulence      = Texture2D(size, descR);
 
-  generatePrecomputedTwiddleFactorsAndInputIndices();
+  generateButterfly();
   generateNoise();
   generateInitials();
 }
@@ -66,7 +63,7 @@ void Tessendorf::fillSettings(const SpectrumSettingsGUI& display, SpectrumSettin
   settings.shortWavesFade = display.shortWavesFade;
 }
 
-void Tessendorf::generatePrecomputedTwiddleFactorsAndInputIndices() {
+void Tessendorf::generateButterfly() {
   shaderButterfly.use();
   shaderButterfly.setUniform1i("u_size", size);
   glBindImageTexture(0, texButterfly.getId(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);

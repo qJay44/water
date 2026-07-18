@@ -248,7 +248,8 @@ int main() {
 
         waterTessendorf.texDisplacement.bind(0);
         waterTessendorf.texDerivatives.bind(1);
-        texSkybox.bind(2);
+        waterTessendorf.texTurbulence.bind(2);
+        texSkybox.bind(3);
         water::mesh.draw(&camera, shaderWaterFFT);
         break;
     }

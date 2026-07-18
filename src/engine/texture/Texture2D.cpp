@@ -16,32 +16,24 @@ const Texture2D& Texture2D::getDebugTex0() {
   return debug0Tex;
 }
 
-Texture2D Texture2D::storage(const image2D& img, const TextureDescriptor& desc) {
-  Texture2D tex;
-
-  tex.onInit(desc);
-  glTexStorage2D(tex.target, 1, desc.internalFormat, img.width, img.height);
+void Texture2D::initStorage(const image2D& img, const TextureDescriptor& desc) {
+  onInit(desc);
+  glTexStorage2D(target, 1, desc.internalFormat, img.width, img.height);
 
   if (img.pixels)
-    glTexSubImage2D(tex.target, 0, 0, 0, img.width, img.height, desc.format, desc.type, img.pixels);
+    glTexSubImage2D(target, 0, 0, 0, img.width, img.height, desc.format, desc.type, img.pixels);
 
-  tex.unbind();
-
-  return tex;
+  unbind();
 }
 
-Texture2D Texture2D::image(const image2D& img, const TextureDescriptor& desc) {
-  Texture2D tex;
-
-  tex.onInit(desc);
-  glTexImage2D(tex.target, 0, desc.internalFormat, img.width, img.height, 0, desc.format, desc.type, img.pixels);
-  tex.unbind();
-
-  return tex;
+void Texture2D::initImage(const image2D& img, const TextureDescriptor& desc) {
+  onInit(desc);
+  glTexImage2D(target, 0, desc.internalFormat, img.width, img.height, 0, desc.format, desc.type, img.pixels);
+  unbind();
 }
 
 Texture2D::Texture2D(const image2D& img, const TextureDescriptor& desc) {
-  *this = storage(img, desc);
+  initStorage(img, desc);
 }
 
 Texture2D::Texture2D(const ivec2& size, const TextureDescriptor& desc)
@@ -60,11 +52,12 @@ void Texture2D::upload(ivec2 coord, ivec2 size, const void* data, GLenum format,
 }
 
 void Texture2D::onInit(const TextureDescriptor& desc) {
-  target = desc.target;
-
   if (desc.target != GL_TEXTURE_2D)
     error("[Texture2D::Texture2D] Wrong target ({:#x})", desc.target);
 
+  target = desc.target;
+
+  clear();
   glGenTextures(1, &id);
   bind();
   glTexParameteri(target, GL_TEXTURE_MIN_FILTER, desc.minFilter);

@@ -12,13 +12,15 @@ public:
   Texture2D() = default;
 
   static const Texture2D& getDebugTex0();
-  [[nodiscard]] static Texture2D storage(const image2D& img, const TextureDescriptor& desc);
-  [[nodiscard]] static Texture2D image(const image2D& img, const TextureDescriptor& desc);
 
+  // All use glTexStorage2D
   Texture2D(const image2D& img, const TextureDescriptor& desc);
   Texture2D(const ivec2& size , const TextureDescriptor& desc);
   Texture2D(int size , const TextureDescriptor& desc);
   Texture2D(const fspath& path, const TextureDescriptor& desc);
+
+  void initStorage(const image2D& img, const TextureDescriptor& desc);
+  void initImage(const image2D& img, const TextureDescriptor& desc);
 
   void upload(ivec2 coord, ivec2 size, const void* data, GLenum format, GLenum type) const;
 

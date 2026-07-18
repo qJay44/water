@@ -25,7 +25,9 @@ TextureCubemap* gui::skyboxTexPtr = nullptr;
 
 u16 gui::fps = 1;
 
-static void RenderTexture(ImTextureRef tex, ImVec2 size = ImVec2(0, 0)) {
+namespace {
+
+void RenderTexture(ImTextureRef tex, ImVec2 size = ImVec2(0, 0)) {
   bool useCustomSize = size.x || size.y;
 
   vec2 winSize = global::getWinSize();
@@ -37,13 +39,42 @@ static void RenderTexture(ImTextureRef tex, ImVec2 size = ImVec2(0, 0)) {
   Image(tex, imgSize, imgUV0, imgUV1);
 }
 
-// TODO: Undo swizzle?
+// Undo swizzle?
 [[maybe_unused]]
-static void ApplySwizzle(const Texture& tex, const std::array<GLint, 4>& swizzle) {
+void ApplySwizzle(const Texture& tex, const std::array<GLint, 4>& swizzle) {
   tex.bind();
   glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle.data());
   tex.unbind();
 }
+
+struct LoaderWidget {
+  std::string bufLoad;
+  std::string bufSave;
+
+  LoaderWidget(const std::string& name) {
+    bufLoad.reserve(256);
+    bufSave.reserve(256);
+    bufLoad = bufSave =  name;
+  }
+
+  bool render(auto& cfg) {
+    bool u = false;
+
+    ImGui::InputText(".json##0", bufLoad.data(), 256 * sizeof(char)); SameLine();
+    if (Button("Load") && bufLoad[0]) {
+      water::loadPreset(cfg, std::format("{}.json", bufLoad));
+      u = true;
+    }
+
+    ImGui::InputText(".json##1", bufSave.data(), 256 * sizeof(char)); SameLine();
+    if (Button("Save") && bufSave[0])
+      water::savePreset(cfg, std::format("{}.json", bufSave));
+
+    return u;
+  }
+};
+
+} // namespace
 
 void gui::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
   ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
@@ -170,21 +201,13 @@ void gui::draw() {
         SliderFloat("Drag mutiplier", &waterPtrSOSA->dragMul, 0.f, 2.f);
         SliderInt("Waves", &waterPtrSOSA->waves, 1, 32);
 
-        SeparatorText("Load/Save");
-
-        static char bufLoad[256]{"sosa0"};
-        static char bufSave[256]{"sosa0"};
-
-        InputText(".json##0", bufLoad, sizeof(bufLoad)); SameLine();
-        if (Button("Load") && bufLoad[0])
-          water::loadPreset(*waterPtrSOSA, std::format("{}.json", bufLoad));
-
-        InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
-        if (Button("Save") && bufSave[0])
-          water::savePreset(*waterPtrSOSA, std::format("{}.json", bufSave));
-
         SeparatorText("Texture");
         RenderTexture(waterPtrSOSA->texNormheight.getId());
+
+        SeparatorText("Load/Save");
+        static LoaderWidget lw("sosa0");
+        lw.render(*waterPtrSOSA);
+
         break;
       }
       case Gerstner:
@@ -205,17 +228,8 @@ void gui::draw() {
         SliderAngle("Angle (step)",      &waterPtrGerstner->angleStep);
 
         SeparatorText("Load/Save");
-
-        static char bufLoad[256]{"gerstner0"};
-        static char bufSave[256]{"gerstner0"};
-
-        InputText(".json##0", bufLoad, sizeof(bufLoad)); SameLine();
-        if (Button("Load") && bufLoad[0])
-          water::loadPreset(*waterPtrGerstner, std::format("{}.json", bufLoad));
-
-        InputText(".json##1", bufSave, sizeof(bufSave)); SameLine();
-        if (Button("Save") && bufSave[0])
-          water::savePreset(*waterPtrGerstner, std::format("{}.json", bufSave));
+        static LoaderWidget lw("gerstner0");
+        lw.render(*waterPtrGerstner);
 
         SeparatorText("Displacement and Normal textures");
         RenderTexture(waterPtrGerstner->texDisplacement.getId()); SameLine();
@@ -226,7 +240,6 @@ void gui::draw() {
       case Tessendorf:
       {
         assert(waterPtrFFT);
-        SeparatorText("General");
         SliderFloat("Mesh scale", &waterPtrTessendorf->worldSize, 1.f, 5000.f);
 
         SeparatorText("Noise settings");
@@ -240,11 +253,11 @@ void gui::draw() {
             waterPtrTessendorf->generateInitials();
           }
         }
-        SeparatorText("Gaussian noise / Precomputed twiddle factors and input indices (stretched)");
+        SeparatorText("Gaussian noise / Butterfly (stretched)");
         RenderTexture(waterPtrTessendorf->texNoise.getId()); SameLine();
         RenderTexture(waterPtrTessendorf->texButterfly.getId());
 
-        SeparatorText("General settings");
+        SeparatorText("General spectrum settings");
         {
           bool u = false;
 
@@ -295,6 +308,11 @@ void gui::draw() {
 
         ApplySwizzle(waterPtrTessendorf->texTurbulence, {GL_RED, GL_RED, GL_RED, GL_ONE});
         RenderTexture(waterPtrTessendorf->texTurbulence.getId());
+
+        SeparatorText("Load/Save");
+        static LoaderWidget lw("tessendorf0");
+        if (lw.render(*waterPtrTessendorf))
+          waterPtrTessendorf->rebuild();
 
         break;
       }

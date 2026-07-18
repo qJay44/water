@@ -1,5 +1,7 @@
 #version 460 core
 
+#include "../common.glsl"
+
 out vec4 FragColor;
 
 in vec3 v_worldPos;
@@ -14,7 +16,8 @@ uniform float u_sunIntensity;
 
 layout(binding = 0) uniform sampler2D u_texDisplacement;
 layout(binding = 1) uniform sampler2D u_texDerivatives;
-layout(binding = 2) uniform samplerCube u_texSkybox;
+layout(binding = 2) uniform sampler2D u_texTurbulence;
+layout(binding = 3) uniform samplerCube u_texSkybox;
 
 void main() {
   // 1. Directions
@@ -42,6 +45,9 @@ void main() {
   float f0 = 0.02f;
   float fresnel = f0 + (1.f - f0) * pow(1.f - vDotN, 5.f);
   vec3 finalCol = mix(diffuseCol + scatterCol, reflCol, fresnel);
+
+  float jacobian = texture(u_texTurbulence, v_uv).r;
+  finalCol = mix(finalCol, vec3(1.f), 1.f - jacobian);
 
   // 6. Specular (The Sun Glint)
   float specAmount = pow(max(dot(normal, halfwayDir), 0.f), u_sunFocus);

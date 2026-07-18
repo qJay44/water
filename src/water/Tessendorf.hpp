@@ -3,6 +3,7 @@
 #include "../engine/Shader.hpp"
 #include "../engine/texture/Texture2D.hpp"
 #include "../engine/mesh/BufferObject.hpp"
+#include "nlohmann/json.hpp"
 #include "general.hpp"
 
 namespace water {
@@ -38,11 +39,16 @@ struct Tessendorf {
   static bool isCreated;
   float worldSize = 256.f;
 
-  int& size = texResolution;
-  int logSize;
-
   float seed1 = 13.37f;
   float seed2 = 42.f;
+
+  float g = 9.81f;
+  float depth = 500.f;
+  float lengthScale = 5;
+  float lambda = 1.f;
+
+  int& size = texResolution;
+  int logSize;
 
   SpectrumSettingsGUI local{
     .scale = 1.f,
@@ -67,11 +73,6 @@ struct Tessendorf {
   };
 
   SpectrumSettings spectrums[2];
-
-  float g = 9.81f;
-  float depth = 500.f; // D
-  float lengthScale = 5;
-  float lambda = 1.f;
 
   Shader shaderButterfly         { "water/fft/butterfly.comp"         };
   Shader shaderNoise             { "water/fft/noise.comp"             };
@@ -105,7 +106,7 @@ struct Tessendorf {
 
   void fillSettings(const SpectrumSettingsGUI& display, SpectrumSettings& settings);
 
-  void generatePrecomputedTwiddleFactorsAndInputIndices();
+  void generateButterfly();
   void generateNoise();
   void generateInitials();
   void generateWavesAtTime(float time);
@@ -114,6 +115,29 @@ struct Tessendorf {
 
   void update();
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Tessendorf::SpectrumSettingsGUI,
+  scale,
+  windSpeed,
+  windDir,
+  fetch,
+  spreadBlend,
+  swell,
+  peakEnhancemnt,
+  shortWavesFade
+);
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Tessendorf,
+  worldSize,
+  seed1,
+  seed2,
+  g,
+  depth,
+  lengthScale,
+  lambda,
+  local,
+  swell
+);
 
 } // namespace water
 

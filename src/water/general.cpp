@@ -4,7 +4,7 @@
 
 namespace water {
 
-int texResolution = 1024; // NOTE: Keep this in power of 2
+int texResolution = 512; // NOTE: Keep this in power of 2
 int meshResolution = 512;
 
 MeshElements mesh;
