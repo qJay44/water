@@ -17,10 +17,41 @@ Tessendorf::Tessendorf() {
 
   ubo.spectrums.gen();
   ubo.spectrums.storage(nullptr, sizeof(spectrums), GL_DYNAMIC_STORAGE_BIT);
-  rebuild();
+  build();
 }
 
-void Tessendorf::rebuild() {
+void Tessendorf::updateInitials() {
+  generateButterfly();
+  generateNoise();
+  generateInitialSpectrum();
+}
+
+void Tessendorf::update() {
+  if (std::exchange(rebuild, false))
+    build();
+
+  generateWavesAtTime(global::time);
+  generateIFFT(texDxDz, texBuffer);
+  generateIFFT(texDyDxz, texBuffer);
+  generateIFFT(texDyxDyz, texBuffer);
+  generateIFFT(texDxxDzz, texBuffer);
+  generateMerge();
+}
+
+void Tessendorf::draw(const Mesh* mesh, const Camera* cam, Shader& shader) const {
+  shader.setUniform1f("u_worldSize", worldSize);
+  shader.setUniform1f("u_lengthScale", lengthScale);
+  shader.setUniform1f("u_foamSharpness", foamSharpness);
+  shader.setUniform1i("u_size", size);
+
+  texDisplacement.bind(0);
+  texDerivatives.bind(1);
+  texTurbulence.bind(2);
+
+  mesh->draw(cam, shader);
+}
+
+void Tessendorf::build() {
   TextureDescriptor descR    { .internalFormat = GL_R32F,    .format = GL_RED,  .wrapS = GL_REPEAT, .wrapT = GL_REPEAT};
   TextureDescriptor descRG   { .internalFormat = GL_RG32F,   .format = GL_RG,   .wrapS = GL_REPEAT, .wrapT = GL_REPEAT};
   TextureDescriptor descRGBA { .internalFormat = GL_RGBA32F, .format = GL_RGBA, .wrapS = GL_REPEAT, .wrapT = GL_REPEAT};
@@ -39,9 +70,7 @@ void Tessendorf::rebuild() {
   texDerivatives     = Texture2D(size, descRGBA);
   texTurbulence      = Texture2D(size, descR);
 
-  generateButterfly();
-  generateNoise();
-  generateInitials();
+  updateInitials();
 }
 
 float Tessendorf::JonswapAlpha(float g, float fetch, float windSpeed) {
@@ -80,7 +109,7 @@ void Tessendorf::generateNoise() {
   glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
-void Tessendorf::generateInitials() {
+void Tessendorf::generateInitialSpectrum() {
   fillSettings(local, spectrums[0]);
   fillSettings(swell, spectrums[1]);
   ubo.spectrums.updateSubData(spectrums, sizeof(spectrums));
@@ -162,15 +191,6 @@ void Tessendorf::generateMerge() {
   glBindImageTexture(6, texTurbulence.getId(), 0, GL_FALSE, 0, GL_READ_WRITE , GL_R32F);
   glDispatchCompute(numWorkGroups, numWorkGroups, 1);
   glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-}
-
-void Tessendorf::update() {
-  generateWavesAtTime(global::time);
-  generateIFFT(texDxDz, texBuffer);
-  generateIFFT(texDyDxz, texBuffer);
-  generateIFFT(texDyxDyz, texBuffer);
-  generateIFFT(texDxxDzz, texBuffer);
-  generateMerge();
 }
 
 } // namespace water

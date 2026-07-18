@@ -11,6 +11,12 @@ public:
 
   Texture2D() = default;
 
+  Texture2D (Texture2D&& other) = default;
+  Texture2D (const Texture2D& other) = delete;
+
+  Texture2D& operator=(Texture2D&& other) = default;
+  Texture2D& operator=(const Texture2D& other) = delete;
+
   static const Texture2D& getDebugTex0();
 
   // All use glTexStorage2D

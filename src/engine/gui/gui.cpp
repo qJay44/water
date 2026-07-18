@@ -178,7 +178,7 @@ void gui::draw() {
       water::updateWorkGroups();
       waterPtrSOSA->rebuild();
       waterPtrGerstner->rebuild();
-      waterPtrTessendorf->rebuild();
+      waterPtrTessendorf->rebuild = true;
     }
 
     if (RadioButton("Sum of sines approximation", global::waterAlgorithm == SOSA)) global::waterAlgorithm = SOSA;
@@ -241,6 +241,7 @@ void gui::draw() {
       {
         assert(waterPtrFFT);
         SliderFloat("Mesh scale", &waterPtrTessendorf->worldSize, 1.f, 5000.f);
+        SliderFloat("Foam strength", &waterPtrTessendorf->foamSharpness, 0.f, 3.f);
 
         SeparatorText("Noise settings");
         {
@@ -250,12 +251,18 @@ void gui::draw() {
 
           if (u) {
             waterPtrTessendorf->generateNoise();
-            waterPtrTessendorf->generateInitials();
+            waterPtrTessendorf->generateInitialSpectrum();
           }
         }
-        SeparatorText("Gaussian noise / Butterfly (stretched)");
+        SeparatorText("Gaussian noise / Butterfly");
         RenderTexture(waterPtrTessendorf->texNoise.getId()); SameLine();
-        RenderTexture(waterPtrTessendorf->texButterfly.getId());
+        {
+          // ugh....
+          vec2 winSize = global::getWinSize();
+          float winLongestPart = glm::max(winSize.x, winSize.y);
+          ImVec2 texSize{(float)waterPtrTessendorf->logSize, std::min((float)waterPtrTessendorf->size, winLongestPart * 0.125f)};
+          RenderTexture(waterPtrTessendorf->texButterfly.getId(), texSize);
+        }
 
         SeparatorText("General spectrum settings");
         {
@@ -295,7 +302,7 @@ void gui::draw() {
           }
 
           if (u)
-            waterPtrTessendorf->generateInitials();
+            waterPtrTessendorf->generateInitialSpectrum();
         }
 
         SeparatorText("Precomputed Data / Conjugated Spectrum");
@@ -312,7 +319,7 @@ void gui::draw() {
         SeparatorText("Load/Save");
         static LoaderWidget lw("tessendorf0");
         if (lw.render(*waterPtrTessendorf))
-          waterPtrTessendorf->rebuild();
+          waterPtrTessendorf->rebuild = true;
 
         break;
       }

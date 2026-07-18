@@ -25,5 +25,6 @@
     "windDir": 0.0,
     "windSpeed": 1.0
   },
-  "worldSize": 953.7509765625
+  "worldSize": 953.7509765625,
+  "foamSharpness": 1.3
 }

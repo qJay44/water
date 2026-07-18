@@ -8,7 +8,7 @@ public:
   Texture(const Texture&) = delete;
   Texture& operator=(const Texture&) = delete;
 
-  virtual ~Texture() = 0;
+  ~Texture();
 
   void bind(GLuint unit = 0) const;
   void unbind() const;

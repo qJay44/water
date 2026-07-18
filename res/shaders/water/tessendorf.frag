@@ -13,6 +13,7 @@ uniform vec3 u_lightColor;
 uniform vec3 u_lightDir;
 uniform float u_sunFocus;
 uniform float u_sunIntensity;
+uniform float u_foamSharpness;
 
 layout(binding = 0) uniform sampler2D u_texDisplacement;
 layout(binding = 1) uniform sampler2D u_texDerivatives;
@@ -47,7 +48,7 @@ void main() {
   vec3 finalCol = mix(diffuseCol + scatterCol, reflCol, fresnel);
 
   float jacobian = texture(u_texTurbulence, v_uv).r;
-  finalCol = mix(finalCol, vec3(1.f), 1.f - jacobian);
+  finalCol += 1.f - smoothstep(0.f, 1.f, jacobian * u_foamSharpness);
 
   // 6. Specular (The Sun Glint)
   float specAmount = pow(max(dot(normal, halfwayDir), 0.f), u_sunFocus);

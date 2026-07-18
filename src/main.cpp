@@ -104,7 +104,7 @@ int main() {
   Shader shaderAxis("axis.vert", "axis.frag");
   Shader shaderWaterSOSA("water/sosa.vert", "water/sosa.frag");
   Shader shaderWaterGerstner("water/gerstner.vert", "water/gerstner.frag");
-  Shader shaderWaterFFT("water/tessendorf.vert", "water/tessendorf.frag");
+  Shader shaderWaterTessendorf("water/tessendorf.vert", "water/tessendorf.frag");
   Shader shaderSkybox("skybox.vert", "skybox.frag");
 
   // ===== Cameras ============================================== //
@@ -136,6 +136,8 @@ int main() {
   water::loadPreset(waterGerstner, "gerstner0.json");
 
   water::Tessendorf waterTessendorf{};
+  water::loadPreset(waterTessendorf, "tessendorf0.json");
+  waterTessendorf.updateInitials();
 
   // ===== Other ================================================ //
 
@@ -197,7 +199,7 @@ int main() {
 
     sun.setUniforms(shaderWaterSOSA);
     sun.setUniforms(shaderWaterGerstner);
-    sun.setUniforms(shaderWaterFFT);
+    sun.setUniforms(shaderWaterTessendorf);
 
     switch (global::waterAlgorithm) {
       case SOSA:
@@ -242,15 +244,8 @@ int main() {
         water::mesh.draw(&camera, shaderWaterGerstner);
         break;
       case Tessendorf:
-        shaderWaterFFT.setUniform1f("u_worldSize", waterTessendorf.worldSize);
-        shaderWaterFFT.setUniform1f("u_lengthScale", waterTessendorf.lengthScale);
-        shaderWaterFFT.setUniform1i("u_size", waterTessendorf.size);
-
-        waterTessendorf.texDisplacement.bind(0);
-        waterTessendorf.texDerivatives.bind(1);
-        waterTessendorf.texTurbulence.bind(2);
         texSkybox.bind(3);
-        water::mesh.draw(&camera, shaderWaterFFT);
+        waterTessendorf.draw(&water::mesh, &camera, shaderWaterTessendorf);
         break;
     }
 

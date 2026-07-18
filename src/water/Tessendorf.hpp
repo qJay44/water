@@ -3,12 +3,26 @@
 #include "../engine/Shader.hpp"
 #include "../engine/texture/Texture2D.hpp"
 #include "../engine/mesh/BufferObject.hpp"
+#include "imgui.h"
 #include "nlohmann/json.hpp"
 #include "general.hpp"
 
+struct gui;
+
 namespace water {
 
-struct Tessendorf {
+class Tessendorf {
+public:
+  Tessendorf();
+
+  void updateInitials();
+
+  void update();
+  void draw(const Mesh* mesh, const Camera* cam, Shader& shader) const;
+
+private:
+  friend ::gui;
+
   struct SpectrumSettingsGUI {
     float scale;
     float windSpeed;
@@ -97,26 +111,11 @@ struct Tessendorf {
   Texture2D texDerivatives;
   Texture2D texTurbulence;
 
-  Tessendorf();
+  float foamSharpness = 1.f;
 
-  void rebuild();
+  bool rebuild = false;
 
-  float JonswapAlpha(float g, float fetch, float windSpeed);
-  float JonswapPeakFrequency(float g, float fetch, float windSpeed);
-
-  void fillSettings(const SpectrumSettingsGUI& display, SpectrumSettings& settings);
-
-  void generateButterfly();
-  void generateNoise();
-  void generateInitials();
-  void generateWavesAtTime(float time);
-  void generateIFFT(Texture2D& input, Texture2D& buffer);
-  void generateMerge();
-
-  void update();
-};
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Tessendorf::SpectrumSettingsGUI,
+NLOHMANN_DEFINE_TYPE_INTRUSIVE(Tessendorf::SpectrumSettingsGUI,
   scale,
   windSpeed,
   windDir,
@@ -127,7 +126,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Tessendorf::SpectrumSettingsGUI,
   shortWavesFade
 );
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Tessendorf,
+NLOHMANN_DEFINE_TYPE_INTRUSIVE(Tessendorf,
+  foamSharpness,
   worldSize,
   seed1,
   seed2,
@@ -138,6 +138,22 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Tessendorf,
   local,
   swell
 );
+
+private:
+  void build();
+
+  static float JonswapAlpha(float g, float fetch, float windSpeed);
+  static float JonswapPeakFrequency(float g, float fetch, float windSpeed);
+
+  void fillSettings(const SpectrumSettingsGUI& display, SpectrumSettings& settings);
+
+  void generateButterfly();
+  void generateNoise();
+  void generateInitialSpectrum();
+  void generateWavesAtTime(float time);
+  void generateIFFT(Texture2D& input, Texture2D& buffer);
+  void generateMerge();
+};
 
 } // namespace water
 
