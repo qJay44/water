@@ -1,3 +1,4 @@
+#include "glm/trigonometric.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -109,7 +110,7 @@ int main() {
 
   // ===== Cameras ============================================== //
 
-  Camera camera({85.f, 77.f, 76.f}, -PI_2);
+  Camera camera({-400.f, 400.f, 400.f}, 0, glm::radians(-25.f));
   camera.setFarPlane(10000.f);
   camera.setSpeedDefault(100.f);
 
