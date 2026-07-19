@@ -3,6 +3,7 @@
 #include "general.hpp"
 #include "glm/common.hpp"
 #include "glm/exponential.hpp"
+#include "global.hpp"
 #include "utils/utils.hpp"
 #include <cassert>
 #include <utility>
@@ -48,6 +49,7 @@ void Tessendorf::draw(const Mesh* mesh, const Camera* cam, Shader& shader) const
   texDerivatives.bind(1);
   texTurbulence.bind(2);
 
+  global::profiler.startScopedTaskGpu(querieDraw);
   mesh->draw(cam, shader);
 }
 
@@ -135,6 +137,8 @@ void Tessendorf::generateInitialSpectrum() {
 }
 
 void Tessendorf::generateWavesAtTime(float time) {
+  global::profiler.startScopedTaskGpu(querieTimeEvolution);
+
   shaderTimeSpectrum.use();
   shaderTimeSpectrum.setUniform1f("u_time", time);
   glBindImageTexture(0, texInitialSpectrum.getId(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
@@ -148,6 +152,8 @@ void Tessendorf::generateWavesAtTime(float time) {
 }
 
 void Tessendorf::generateIFFT(Texture2D& input, Texture2D& buffer) {
+  global::profiler.startScopedTaskGpu(querieIFFT);
+
   GLuint ping = input.getId();
   GLuint pong = buffer.getId();
   glBindImageTexture(0, texButterfly.getId(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
@@ -179,6 +185,8 @@ void Tessendorf::generateIFFT(Texture2D& input, Texture2D& buffer) {
 }
 
 void Tessendorf::generateMerge() {
+  global::profiler.startScopedTaskGpu(querieMerge);
+
   shaderMerge.use();
   shaderMerge.setUniform1f("u_lambda", lambda);
   shaderMerge.setUniform1f("u_dt", global::dt);

@@ -3,6 +3,7 @@
 namespace global {
 
 GLFWwindow* window = nullptr;
+ProfilerManager profiler{60};
 WaterAlgorithm waterAlgorithm = WaterAlgorithm::SOSA;
 
 float dt = 0.f;

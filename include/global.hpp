@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ProfilerManager.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 
 namespace global {
@@ -15,6 +16,7 @@ enum class WaterAlgorithm {
 };
 
 extern GLFWwindow* window;
+extern ProfilerManager profiler;
 extern WaterAlgorithm waterAlgorithm;
 
 extern float dt;

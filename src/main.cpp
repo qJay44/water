@@ -196,6 +196,8 @@ int main() {
 
     // ===== Updates ============================================== //
 
+    global::profiler.clearTasks();
+
     using enum global::WaterAlgorithm;
 
     sun.setUniforms(shaderWaterSOSA);
@@ -233,6 +235,7 @@ int main() {
         waterSOSA.texNormheight.bind(0);
         texSkybox.bind(1);
 
+        global::profiler.startScopedTaskGpu(waterSOSA.querieDraw);
         water::mesh.draw(&camera, shaderWaterSOSA);
         break;
       case Gerstner:
@@ -242,6 +245,7 @@ int main() {
         waterGerstner.texNormal.bind(1);
         texSkybox.bind(2);
 
+        global::profiler.startScopedTaskGpu(waterGerstner.querieDraw);
         water::mesh.draw(&camera, shaderWaterGerstner);
         break;
       case Tessendorf:

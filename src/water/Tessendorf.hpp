@@ -3,7 +3,6 @@
 #include "../engine/Shader.hpp"
 #include "../engine/texture/Texture2D.hpp"
 #include "../engine/mesh/BufferObject.hpp"
-#include "imgui.h"
 #include "nlohmann/json.hpp"
 #include "general.hpp"
 
@@ -110,6 +109,11 @@ private:
   Texture2D texDisplacement;
   Texture2D texDerivatives;
   Texture2D texTurbulence;
+
+  ProfilerManager::Query querieTimeEvolution{"Time evo pass"};
+  ProfilerManager::Query querieIFFT{"IFFT pass"};
+  ProfilerManager::Query querieMerge{"Merge pass"};
+  ProfilerManager::Query querieDraw{"Draw pass"};
 
   float foamSharpness = 1.f;
 

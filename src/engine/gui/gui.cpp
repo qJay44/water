@@ -356,6 +356,14 @@ void gui::draw() {
 
   End();
 
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  ImVec2 posBR = viewport->WorkPos + viewport->WorkSize;
+
+  ImGui::SetNextWindowPos(posBR, ImGuiCond_Always, {1.f, 1.f});
+  // ImGui::SetNextWindowCollapsed(infoCollapsed);
+
+  global::profiler.renderTasks(400, 200, 200, 0);
+
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

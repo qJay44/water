@@ -26,7 +26,12 @@ struct Gerstner {
   Texture2D texDisplacement{ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA}};
   Texture2D texNormal{ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA}};
 
+  ProfilerManager::Query querieCS{"CS pass"};
+  ProfilerManager::Query querieDraw{"Draw pass"};
+
   void update() {
+    global::profiler.startScopedTaskGpu(querieCS);
+
     shader.use();
 
     shader.setUniform1f("u_worldSize", worldSize);

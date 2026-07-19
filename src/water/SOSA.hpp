@@ -23,7 +23,12 @@ struct SOSA {
   Shader shader = Shader("water/sosa.comp");
   Texture2D texNormheight = Texture2D(ivec2{texResolution}, {.internalFormat = GL_RGBA32F, .format = GL_RGBA});
 
+  ProfilerManager::Query querieCS{"CS pass"};
+  ProfilerManager::Query querieDraw{"Draw pass"};
+
   void update() {
+    global::profiler.startScopedTaskGpu(querieCS);
+
     shader.use();
     shader.setUniform1f("u_worldSize", worldSize);
     shader.setUniform1f("u_wavelength", wavelength);
@@ -35,6 +40,7 @@ struct SOSA {
     shader.setUniform1f("u_dragMul", dragMul);
     shader.setUniform1f("u_time", global::time);
     shader.setUniform1i("u_count", waves);
+
     glBindImageTexture(0, texNormheight.getId(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glDispatchCompute(numWorkGroups, numWorkGroups, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
